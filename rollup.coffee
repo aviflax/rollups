@@ -171,10 +171,20 @@ rollupFunctional = (dates, window='1h') ->
 
 toCsv = (windows, separator='\t') ->
     'Start' + separator + 'End' + separator + 'Count\n' +
-        windows.reduce ((previous, window) -> previous + window.start.toLocaleDateString() + separator + window.end.toLocaleDateString() + separator + window.count + '\n'), ''
+        windows.reduce ((previous, window) ->
+            previous +
+            formatDateTimeForCsv(window.start) +
+            separator +
+            formatDateTimeForCsv(window.end) +
+            separator +
+            window.count +
+            '\n'), ''
 
 
+padZeroLeft = (number) -> (if number < 10 then '0' else '') + number
 
+
+formatDateTimeForCsv = (date) -> "#{date.getFullYear()}-#{padZeroLeft(date.getMonth())}-#{padZeroLeft(date.getDate())} #{padZeroLeft(date.getHours())}:#{padZeroLeft(date.getMinutes())}"
 
 
 ### SCRIPT BODY ###
