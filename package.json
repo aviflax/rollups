@@ -4,7 +4,8 @@
   "description": "Exercises in writing time-window rollups in various languages",
   "author": "Avi Flax <avi@aviflax.com>",
   "dependencies": {
-    "linestream": "0.2.x"
+    "linestream": "0.2.x",
+    "optimist": "0.3.x"
   },
   "devDependencies": {
   },

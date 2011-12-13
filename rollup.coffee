@@ -18,6 +18,7 @@ Bugs:
 
 
 LineStream = require('linestream')
+optimist = require('optimist')
 
 
 extractDate = (line) ->
@@ -175,6 +176,16 @@ toCsv = (windows, separator='\t') ->
 
 
 
+
+### SCRIPT BODY ###
+
+optimist.options 'w',
+    alias: 'window',
+    demand: true,
+    describe: 'Time window size for rollups. xm, xh, xd, xw'
+
+argv = optimist.argv
+
 linestream = new LineStream process.stdin
 dates = []
 
@@ -182,5 +193,5 @@ linestream.on 'data', (line) ->
     date = extractDate line
     if date then dates.push date
 
-linestream.on 'end', () -> process.stdout.write toCsv rollupFunctional dates, '1d'
+linestream.on 'end', () -> process.stdout.write toCsv rollupFunctional dates, argv.w
 process.stdin.resume()
