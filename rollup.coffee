@@ -67,6 +67,7 @@ windowToMillis = (window) ->
         when 'w' then num * 1000 * 60 * 60 * 24 * 7
         else throw new Error("#{window} is not a valid unit")
 
+
 ###
 There are 2 big problems with both of these functions right now:
     1) it requires loading the entire set of dates into memory all at once before processing
@@ -84,7 +85,7 @@ So maybe the function would take a seq of rollup data, and a new date, and figur
 Essentially, instead of looping through all the dates for each window, loop through all the windows for each date.
     This'd almost certainly save memory, since it could "stream", although it might not be more CPU efficient.
 ###
-rollupImperative = (dates, window="1h") ->
+rollupImperative = (dates, window='1h') ->
     windowMillis = windowToMillis window
     
     currentWindow =
@@ -118,29 +119,43 @@ rollupImperative = (dates, window="1h") ->
     return windows
 
 
+
+dateToWindowStart = (date, window) ->
+    # need to create a new date because the setters mutate state
+    start = new Date date
+    
+    start.setMilliseconds 0 
+    start.setSeconds 0 
+    
+    switch extractWindowUnits window
+        when 'h'
+            start.setMinutes 0
+        when 'd', 'w'
+            start.setMinutes 0
+            start.setHours 0
+            # TODO: for 'w', should probably move to the beginning of the week, but should it be Sunday or Monday?
+    
+    return start
+
+
+
 # See comment above rollupImperative
-rollupFunctional = (dates, window="1h") ->
+rollupFunctional = (dates, window='1h') ->
     if dates.length is 0 then return []
     
     windowMillis = windowToMillis window
     
-    # this could be inline but it's much more readable this way
+    # this could be inline below but it's much more readable this way
     makeWindow = (start) ->
         start: start
         end: new Date((start.getTime() + windowMillis) - 1)
         count: 0
+        
+    firstWindowStart = dateToWindowStart(dates[0], window)
     
-    firstWindowStart = dates[0]
-
-    switch extractWindowUnits window
-        when 'd'
-            firstWindowStart.setHours(0)
-            firstWindowStart.setMinutes(0)
-            firstWindowStart.setSeconds(0)
-            firstWindowStart.setMilliseconds(0)
-
     # create all the windows with a 0 count
     windows = (makeWindow new Date dateMillis for dateMillis in [firstWindowStart.getTime()..dates[dates.length-1].getTime()] by windowMillis)
+    
     ###
     this has the (small) advantage of not requiring the dates to be sorted
         but it's far less efficient when using small windows
@@ -167,5 +182,5 @@ linestream.on 'data', (line) ->
     date = extractDate line
     if date then dates.push date
 
-linestream.on 'end', () -> console.log toCsv rollupFunctional dates, '1d'
+linestream.on 'end', () -> process.stdout.write toCsv rollupFunctional dates, '1d'
 process.stdin.resume()
