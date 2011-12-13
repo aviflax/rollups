@@ -29,6 +29,13 @@ So maybe the function would take a seq of rollup data, and a new date, and figur
 
 Essentially, instead of looping through all the dates for each window, loop through all the windows for each date.
     This'd almost certainly save memory, since it could "stream", although it might not be more CPU efficient.
+
+
+TO DO:
+* Support parallellization (off by default)
+* Support other event timestamp formats
+* Support other output formats (starting with JSON)
+* Support cmd-line arg for csv separator
     
 ###
 
