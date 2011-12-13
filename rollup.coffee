@@ -157,7 +157,7 @@ toCsv = (windows, separator='\t') ->
 padZeroLeft = (number) -> (if number < 10 then '0' else '') + number
 
 
-formatDateTimeForCsv = (date) -> "#{date.getFullYear()}-#{padZeroLeft(date.getMonth())}-#{padZeroLeft(date.getDate())} #{padZeroLeft(date.getHours())}:#{padZeroLeft(date.getMinutes())}"
+formatDateTimeForCsv = (date) -> "#{date.getFullYear()}-#{padZeroLeft(date.getMonth()+1)}-#{padZeroLeft(date.getDate())} #{padZeroLeft(date.getHours())}:#{padZeroLeft(date.getMinutes())}"
 
 
 ### SCRIPT BODY ###
