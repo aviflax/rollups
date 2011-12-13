@@ -5,14 +5,6 @@ rollup.coffee — given a line-delimited list of dates from Apache httpd access
 
 Each line looks like this:
 168.75.67.132 - - [23/Nov/2011:17:29:24 -0500] "POST /fnic-1/pxcentral/notifications/policy.updated HTTP/1.1" 200 69 "-" "ShortBus/1.1 (Noelios-Restlet-Engine/1.1.5;Java 1.6.0_20;Windows 2003 5.2)"
-
-
-Bugs:
-    * memory & performance are poor because it doesn't stream
-    * the rollup windows start wherever the first event is, going on from there in regular intervals
-        * so if the first event is at 19:03 and we're doing a 1-day rollup, each 24-hour window starts at 19:03
-        * instead, I need to start each window by finding the first event, figure out from that when the first window should start
-        * UPDATE: this is fixed EXCEPT for 'w'
         
 There are 2 big problems with this right now:
     1) it requires loading the entire set of dates into memory all at once before processing
@@ -36,6 +28,7 @@ TO DO:
 * Support other event timestamp formats
 * Support other output formats (starting with JSON)
 * Support cmd-line arg for csv separator
+* Add an option to specify whether weeks should start on Sunday or Monday
     
 ###
 
@@ -104,10 +97,15 @@ dateToWindowStart = (date, window) ->
     switch extractWindowUnits window
         when 'h'
             start.setMinutes 0
-        when 'd', 'w'
+        when 'd'
             start.setMinutes 0
             start.setHours 0
-            # TODO: for 'w', should probably move to the beginning of the week, but should it be Sunday or Monday?
+        when 'w'
+            start.setMinutes 0
+            start.setHours 0
+            # change the day to the prior Sunday
+            # JS appears to do the right thing: even if start was, for example, Thursday the first, then changing the date to Sunday also properly changes the month to the prior month.
+            start.setDate start.getDate() - start.getDay()
     
     return start
 
