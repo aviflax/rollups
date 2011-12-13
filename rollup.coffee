@@ -130,7 +130,7 @@ rollup = (dates, window='1d') ->
     windows.map (window) ->
         start: window.start
         end: window.end
-        count: (date for date in dates when date > window.start and date < window.end).length
+        count: (date for date in dates when date >= window.start and date < window.end).length
 
 
 
