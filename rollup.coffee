@@ -67,18 +67,34 @@ extractDate = (line) ->
     return null if !matches
     
     day = matches[1]
-    month = matches[2]
+
+    month =
+        switch matches[2]
+            when 'Jan' then 0
+            when 'Feb' then 1
+            when 'Mar' then 2
+            when 'Apr' then 3
+            when 'May' then 4
+            when 'Jun' then 5
+            when 'Jul' then 6
+            when 'Aug' then 7
+            when 'Sep' then 8
+            when 'Oct' then 9
+            when 'Nov' then 10
+            when 'Dec' then 11
+
     year = matches[3]
     hour = matches[4]
     minute = matches[5]
     second = matches[6]
     offset = matches[7]
     
-    new Date("#{day} #{month} #{year} #{hour}:#{minute}:#{second}#{offset}")
+    # I had been passing in a string with the offset, which worked in general,
+    # but there was a problem with days containing a daylight savings time switch.
+    new Date(year, month, day, hour, minute, second)
 
 
-
-extractWindowUnits = (window) -> window.charAt window.length - 1
+extractWindowUnits = (windowSpec) -> windowSpec.charAt windowSpec.length - 1
 
 
 windowToMillis = (window) ->
@@ -94,14 +110,14 @@ windowToMillis = (window) ->
 
 
 
-dateToWindowStart = (date, window) ->
+dateToWindowStart = (date, windowSpec) ->
     # need to create a new date because the setters mutate state
-    start = new Date date
+    start = new Date date.getTime()
     
     start.setMilliseconds 0 
     start.setSeconds 0 
     
-    switch extractWindowUnits window
+    switch extractWindowUnits windowSpec
         when 'h'
             start.setMinutes 0
         when 'd'
@@ -114,36 +130,45 @@ dateToWindowStart = (date, window) ->
             # JS appears to do the right thing: even if start was, for example, Thursday the first, then changing the date to Sunday also properly changes the month to the prior month.
             start.setDate start.getDate() - start.getDay()
     
+    #console.log "Converted date #{date} to window start #{start}"
+    
     return start
 
 
+makeWindow = (startDate, windowSpec, startCount=0) ->
+    start = dateToWindowStart startDate, windowSpec 
 
-rollup = (dates, window='1d') ->
-    if dates.length is 0 then return []
-    
-    windowMillis = windowToMillis window
-    
-    # this could be inline below but it's much more readable this way
-    makeWindow = (start) ->
+    result = 
         start: start
-        end: new Date((start.getTime() + windowMillis) - 1)
-        count: 0
-        
-    firstWindowStart = dateToWindowStart(dates[0], window)
-    
-    # create all the windows with a 0 count
-    windows = (makeWindow new Date dateMillis for dateMillis in [firstWindowStart.getTime()..dates[dates.length-1].getTime()] by windowMillis)
-    
-    ###
-    this has the (small) advantage of not requiring the dates to be sorted
-        but it's far less efficient when using small windows
-        because we have to filter _all_ the dates for each window
-    ###
-    windows.map (window) ->
-        start: window.start
-        end: window.end
-        count: (date for date in dates when date >= window.start and date < window.end).length
+        end: new Date((start.getTime() + windowToMillis windowSpec) - 1)
+        count: startCount
 
+    #console.log "Created window ", result, " from date #{startDate} with windowSpec #{windowSpec}"
+
+    return result
+
+
+copyWindow = (window) ->
+    start: window.start
+    end: window.end
+    count: window.count
+
+
+# IMPORTANT — this expects the input to be SORTED ALREADY
+rollup = (windows, date, windowSpec='1d') ->
+    if windows.length
+        window = windows[windows.length - 1]
+    else
+        window = makeWindow date, windowSpec
+        windows.push window
+    
+    if date >= window.start and date <= window.end
+        window.count++
+    else
+        window = makeWindow date, windowSpec, 1
+        windows.push window
+
+    return windows
 
 
 toCsv = (windows, separator='\t') ->
@@ -185,11 +210,13 @@ optimist.options 'w',
 argv = optimist.argv
 
 linestream = new LineStream process.stdin
-dates = []
+windows = []
 
 linestream.on 'data', (line) ->
     date = extractDate line
-    if date then dates.push date
+    if date then windows = rollup windows, date, argv.w
+    #console.log "date: #{date}"
+    #console.log "window: ", makeWindow(date, argv.w), "\n\n"
 
-linestream.on 'end', () -> process.stdout.write toCsv rollup dates, argv.w
+linestream.on 'end', () -> process.stdout.write toCsv windows
 process.stdin.resume()
