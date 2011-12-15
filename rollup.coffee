@@ -23,13 +23,20 @@ Essentially, instead of looping through all the dates for each window, loop thro
     This'd almost certainly save memory, since it could "stream", although it might not be more CPU efficient.
 
 
-TO DO:
+POSSIBLE TO DOS:
 * Support parallellization (off by default)
 * Support other event timestamp formats
 * Support other output formats (starting with JSON)
 * Support cmd-line arg for csv separator
 * Add an option to specify whether weeks should start on Sunday or Monday
-    
+* Support the input already being a rollup, of which we'd do a bigger rollup
+** so you might store a per-minute rollup in a file, and generate a per-hour rollup from that
+** kinda like re-reduce
+** This'd work really well with a companion tool, something which would support incremental processing
+   by keeping track of where you were in a file or stream, and grabbing only that
+
+
+
 ###
 
 
