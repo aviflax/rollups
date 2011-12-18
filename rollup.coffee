@@ -5,9 +5,12 @@ rollup.coffee — given a line-delimited list of dates from Apache httpd access
 
 Each line looks like this:
 168.75.67.132 - - [23/Nov/2011:17:29:24 -0500] "POST /fnic-1/pxcentral/notifications/policy.updated HTTP/1.1" 200 69 "-" "ShortBus/1.1 (Noelios-Restlet-Engine/1.1.5;Java 1.6.0_20;Windows 2003 5.2)"
-        
+    
+## BUGS
+* The 'week' window spec doesn't work properly
 
-POSSIBLE TO DOS:
+
+## POSSIBLE TO DOS:
 * Support parallellization (off by default)
 * Support other event timestamp formats
 * Support other output formats (starting with JSON)
@@ -109,13 +112,13 @@ makeWindow = (startDate, windowSpec, startCount=0) ->
 
 
 addWindowDurationToStartDate = (startDate, windowSpec) ->
+    # TODO: BUG: The 'week' window spec doesn't work properly
+    
     switch extractWindowUnits windowSpec
         when 'm', 'h'
             new Date (startDate.getTime() + windowToMillis windowSpec) - 1
         else
-            # in order to work around Daylight Savings Time and other
-            # time discontinuities, need to change hour to noon, then add N days, then change hour back to 0
-            # see http://stackoverflow.com/questions/4110039/javascript-dates-what-is-the-best-way-to-deal-with-daylight-savings-time
+            # brute-force hack to get around Daylight Savings Time issues
             endDate = new Date startDate
             endDate.setHours 23
             endDate.setMinutes 59
@@ -130,25 +133,41 @@ copyWindow = (window) ->
     count: window.count
 
 
+Array.prototype.first = (func) ->
+    found = false
+    i = 1
+    
+    until found or i > this.length
+        i++
+        found = func this[i-2]
+    
+    if found then this[i-2] else null
+
+
+Array.prototype.firstFromRight = (func) ->
+    found = false
+    i = this.length - 1
+    
+    until found or i < 0
+        i--
+        found = func this[i+1]
+        
+    if found then this[i+1] else null
+
 
 rollup = (windows, date, windowSpec='1d') ->
-    # TODO: don't mutate windows, make a copy first
     if not date then return windows
+            
+    matchingWindow = windows.firstFromRight (window) -> date >= window.start and date < window.end
     
-    matchingWindows = windows.filter (window) -> date >= window.start and date < window.end
-    
-    if matchingWindows.length
-        window = matchingWindows[0]
+    if matchingWindow
+        # TODO: stop mutating!
+        matchingWindow.count++
+        windows
     else
-        window = makeWindow date, windowSpec
-        windows.push window
+        newWindow = makeWindow date, windowSpec, 1
+        windows.concat newWindow
         
-    window.count++
-    
-    # TODO: fill in any windows in between which might have been missed
-    
-    return windows
-
 
 
 toCsv = (windows, separator='\t') ->
