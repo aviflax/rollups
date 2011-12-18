@@ -81,7 +81,7 @@ windowToMillis = (window) ->
 
 dateToWindowStart = (date, windowSpec) ->
     # need to create a new date because the setters mutate state
-    start = new Date date.getTime()
+    start = new Date date
     
     start.setMilliseconds 0 
     start.setSeconds 0 
@@ -156,7 +156,7 @@ Array.prototype.firstFromRight = (func) ->
 rollup = (windows, date, windowSpec='1d') ->
     if not date then return windows
     
-    matchingWindow = windows.firstFromRight (window) -> date >= window.start and date < window.end
+    matchingWindow = windows.firstFromRight (window) ->  window.start <= date < window.end
     
     if matchingWindow
         # TODO: stop mutating!
