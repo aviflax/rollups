@@ -23,8 +23,8 @@ POSSIBLE TO DOS:
 ###
 
 
-LineStream = require('linestream')
-optimist = require('optimist')
+LineStream = require 'linestream'
+optimist = require 'optimist'
 
 
 extractDate = (line) ->
@@ -45,36 +45,20 @@ extractDate = (line) ->
                     \]
                 ///
     
-    matches = dateRegex.exec(line)
+    matches = dateRegex.exec line
     
     return null if !matches
     
     day = matches[1]
-    
-    month =
-        switch matches[2]
-            when 'Jan' then 0
-            when 'Feb' then 1
-            when 'Mar' then 2
-            when 'Apr' then 3
-            when 'May' then 4
-            when 'Jun' then 5
-            when 'Jul' then 6
-            when 'Aug' then 7
-            when 'Sep' then 8
-            when 'Oct' then 9
-            when 'Nov' then 10
-            when 'Dec' then 11
-            
+    month = matches[2]
     year = matches[3]
     hour = matches[4]
     minute = matches[5]
     second = matches[6]
     offset = matches[7]
     
-    # I had been passing in a string with the offset, which worked in general,
-    # but there was a problem with days containing a daylight savings time switch.
-    new Date(year, month, day, hour, minute, second)
+    # important to preserve the offsets so we're basically working with local times
+    new Date("#{month} #{day}, #{year} #{hour}:#{minute}:#{second}#{offset}")
 
 
 extractWindowUnits = (windowSpec) -> windowSpec.charAt windowSpec.length - 1
@@ -89,7 +73,7 @@ windowToMillis = (window) ->
         when 'h' then num * 1000 * 60 * 60
         when 'd' then num * 1000 * 60 * 60 * 24
         when 'w' then num * 1000 * 60 * 60 * 24 * 7
-        else throw new Error("#{window} is not a valid unit")
+        else throw new Error "#{window} is not a valid unit"
 
 
 
@@ -97,38 +81,47 @@ dateToWindowStart = (date, windowSpec) ->
     # need to create a new date because the setters mutate state
     start = new Date date.getTime()
     
-    start.setUTCMilliseconds 0 
-    start.setUTCSeconds 0 
+    start.setMilliseconds 0 
+    start.setSeconds 0 
     
     switch extractWindowUnits windowSpec
         when 'h'
-            start.setUTCMinutes 0
+            start.setMinutes 0
         when 'd'
-            start.setUTCMinutes 0
-            start.setUTCHours 0
+            start.setMinutes 0
+            start.setHours 0
         when 'w'
-            start.setUTCMinutes 0
-            start.setUTCHours 0
+            start.setMinutes 0
+            start.setHours 0
             # change the day to the prior Sunday
             # JS appears to do the right thing: even if start was, for example, Thursday the first, then changing the date to Sunday also properly changes the month to the prior month.
-            start.setUTCDate start.getUTCDate() - start.getUTCDay()
-    
-    #console.log "Converted date #{date.toUTCString()} to window start #{start.toUTCString()}"
-    
+            start.setDate start.getDate() - start.getDay()
+        
     return start
 
 
 makeWindow = (startDate, windowSpec, startCount=0) ->
     start = dateToWindowStart startDate, windowSpec 
     
-    result = 
-        start: start
-        end: new Date((start.getTime() + windowToMillis windowSpec) - 1)
-        count: startCount
-        
-    #console.log "\nCreated window ", result, " from date #{startDate.toUTCString()} with windowSpec #{windowSpec}"
-    
-    return result
+    start: start
+    end: addWindowDurationToStartDate start, windowSpec
+    count: startCount
+
+
+addWindowDurationToStartDate = (startDate, windowSpec) ->
+    switch extractWindowUnits windowSpec
+        when 'm', 'h'
+            new Date (startDate.getTime() + windowToMillis windowSpec) - 1
+        else
+            # in order to work around Daylight Savings Time and other
+            # time discontinuities, need to change hour to noon, then add N days, then change hour back to 0
+            # see http://stackoverflow.com/questions/4110039/javascript-dates-what-is-the-best-way-to-deal-with-daylight-savings-time
+            endDate = new Date startDate
+            endDate.setHours 23
+            endDate.setMinutes 59
+            endDate.setSeconds 59
+            endDate.setMilliseconds 999
+            endDate
 
 
 copyWindow = (window) ->
@@ -140,14 +133,13 @@ copyWindow = (window) ->
 
 rollup = (windows, date, windowSpec='1d') ->
     # TODO: don't mutate windows, make a copy first
+    if not date then return windows
     
     matchingWindows = windows.filter (window) -> date >= window.start and date < window.end
     
     if matchingWindows.length
         window = matchingWindows[0]
     else
-        #console.log "\n\n-- #{date.toUTCString()} --\nno matching window found in:\n", windows
-        #if windows.length > 2 then throw new Error('ARGH')
         window = makeWindow date, windowSpec
         windows.push window
         
@@ -157,8 +149,6 @@ rollup = (windows, date, windowSpec='1d') ->
     
     return windows
 
-    
-    
 
 
 toCsv = (windows, separator='\t') ->
@@ -190,6 +180,7 @@ formatDateTimeForCsv = (date) ->
     padZeroLeft(date.getMinutes())
 
 
+
 ### SCRIPT BODY ###
 
 optimist.options 'w',
@@ -200,13 +191,12 @@ optimist.options 'w',
 argv = optimist.argv
 
 linestream = new LineStream process.stdin
+
+# TODO: this gets mutated (replaced) with every 'data' event below. Is that OK?
 windows = []
 
-linestream.on 'data', (line) ->
-    date = extractDate line
-    if date then windows = rollup windows, date, argv.w
-    #console.log "date: #{date}"
-    #console.log "window: ", makeWindow(date, argv.w), "\n\n"
+linestream.on 'data', (line) -> windows = rollup windows, extractDate line, argv.w
 
 linestream.on 'end', () -> process.stdout.write toCsv windows
+
 process.stdin.resume()
