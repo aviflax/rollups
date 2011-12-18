@@ -154,7 +154,7 @@ Array.prototype.firstFromRight = (func) ->
 
 
 rollup = (windows, date, windowSpec='1d') ->
-    if not date then return windows
+    return windows if not date
     
     matchingWindow = windows.firstFromRight (window) ->  window.start <= date < window.end
     
@@ -163,8 +163,7 @@ rollup = (windows, date, windowSpec='1d') ->
         matchingWindow.count++
         windows
     else
-        newWindow = makeWindow date, windowSpec, 1
-        windows.concat newWindow
+        windows.concat makeWindow date, windowSpec, 1
         
 
 
