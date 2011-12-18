@@ -1,11 +1,12 @@
 {
   "name": "Rollups",
-  "version": "0.0.0-0",
+  "version": "0.0.1-0",
   "description": "Exercises in writing time-window rollups in various languages",
   "author": "Avi Flax <avi@aviflax.com>",
   "dependencies": {
     "linestream": "0.2.x",
-    "optimist": "0.3.x"
+    "optimist": "0.3.x",
+    "coffee-script": "1.2.0"
   },
   "devDependencies": {
   },
