@@ -6,22 +6,6 @@ rollup.coffee — given a line-delimited list of dates from Apache httpd access
 Each line looks like this:
 168.75.67.132 - - [23/Nov/2011:17:29:24 -0500] "POST /fnic-1/pxcentral/notifications/policy.updated HTTP/1.1" 200 69 "-" "ShortBus/1.1 (Noelios-Restlet-Engine/1.1.5;Java 1.6.0_20;Windows 2003 5.2)"
         
-There are 2 big problems with this right now:
-    1) it requires loading the entire set of dates into memory all at once before processing
-    2) for every window we scan through the entire set of dates
-This uses a ton of memory and CPU time. If we need to process a large data set into a set of small windows,
-    it could take a lot of resources and time.
-
-A possibly better approach might be to build the set of windows on the fly, as we go, and process the dates
-    one at a time.
-
-So maybe the function would take a seq of rollup data, and a new date, and figure out where it fits.
-    It would search for a window in which it fit — if it found one, voila, done.
-    If not, it'd create it and add it to the seq.
-
-Essentially, instead of looping through all the dates for each window, loop through all the windows for each date.
-    This'd almost certainly save memory, since it could "stream", although it might not be more CPU efficient.
-
 
 POSSIBLE TO DOS:
 * Support parallellization (off by default)
@@ -29,13 +13,12 @@ POSSIBLE TO DOS:
 * Support other output formats (starting with JSON)
 * Support cmd-line arg for csv separator
 * Add an option to specify whether weeks should start on Sunday or Monday
+* Support rollup windows of N months
 * Support the input already being a rollup, of which we'd do a bigger rollup
 ** so you might store a per-minute rollup in a file, and generate a per-hour rollup from that
 ** kinda like re-reduce
 ** This'd work really well with a companion tool, something which would support incremental processing
    by keeping track of where you were in a file or stream, and grabbing only that
-
-
 
 ###
 
@@ -67,7 +50,7 @@ extractDate = (line) ->
     return null if !matches
     
     day = matches[1]
-
+    
     month =
         switch matches[2]
             when 'Jan' then 0
@@ -82,7 +65,7 @@ extractDate = (line) ->
             when 'Oct' then 9
             when 'Nov' then 10
             when 'Dec' then 11
-
+            
     year = matches[3]
     hour = matches[4]
     minute = matches[5]
@@ -114,37 +97,37 @@ dateToWindowStart = (date, windowSpec) ->
     # need to create a new date because the setters mutate state
     start = new Date date.getTime()
     
-    start.setMilliseconds 0 
-    start.setSeconds 0 
+    start.setUTCMilliseconds 0 
+    start.setUTCSeconds 0 
     
     switch extractWindowUnits windowSpec
         when 'h'
-            start.setMinutes 0
+            start.setUTCMinutes 0
         when 'd'
-            start.setMinutes 0
-            start.setHours 0
+            start.setUTCMinutes 0
+            start.setUTCHours 0
         when 'w'
-            start.setMinutes 0
-            start.setHours 0
+            start.setUTCMinutes 0
+            start.setUTCHours 0
             # change the day to the prior Sunday
             # JS appears to do the right thing: even if start was, for example, Thursday the first, then changing the date to Sunday also properly changes the month to the prior month.
-            start.setDate start.getDate() - start.getDay()
+            start.setUTCDate start.getUTCDate() - start.getUTCDay()
     
-    #console.log "Converted date #{date} to window start #{start}"
+    #console.log "Converted date #{date.toUTCString()} to window start #{start.toUTCString()}"
     
     return start
 
 
 makeWindow = (startDate, windowSpec, startCount=0) ->
     start = dateToWindowStart startDate, windowSpec 
-
+    
     result = 
         start: start
         end: new Date((start.getTime() + windowToMillis windowSpec) - 1)
         count: startCount
-
-    #console.log "Created window ", result, " from date #{startDate} with windowSpec #{windowSpec}"
-
+        
+    #console.log "\nCreated window ", result, " from date #{startDate.toUTCString()} with windowSpec #{windowSpec}"
+    
     return result
 
 
@@ -154,21 +137,28 @@ copyWindow = (window) ->
     count: window.count
 
 
-# IMPORTANT — this expects the input to be SORTED ALREADY
+
 rollup = (windows, date, windowSpec='1d') ->
-    if windows.length
-        window = windows[windows.length - 1]
+    # TODO: don't mutate windows, make a copy first
+    
+    matchingWindows = windows.filter (window) -> date >= window.start and date < window.end
+    
+    if matchingWindows.length
+        window = matchingWindows[0]
     else
+        #console.log "\n\n-- #{date.toUTCString()} --\nno matching window found in:\n", windows
+        #if windows.length > 2 then throw new Error('ARGH')
         window = makeWindow date, windowSpec
         windows.push window
+        
+    window.count++
     
-    if date >= window.start and date <= window.end
-        window.count++
-    else
-        window = makeWindow date, windowSpec, 1
-        windows.push window
-
+    # TODO: fill in any windows in between which might have been missed
+    
     return windows
+
+    
+    
 
 
 toCsv = (windows, separator='\t') ->
