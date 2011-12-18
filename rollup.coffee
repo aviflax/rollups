@@ -62,7 +62,7 @@ extractDate = (line) ->
                     \]
                 ///
     
-    matches = dateRegex.exec(line)
+    matches = dateRegex.exec line
     
     return null if !matches
     
@@ -121,18 +121,19 @@ dateToWindowStart = (date, window) ->
 rollup = (dates, window='1d') ->
     if dates.length is 0 then return []
     
-    windowMillis = windowToMillis window
+    windowLengthMillis = windowToMillis window
     
     # this could be inline below but it's much more readable this way
     makeWindow = (start) ->
-        start: start
-        end: new Date((start.getTime() + windowMillis) - 1)
+        start: new Date(start)
+        end: new Date((start.getTime() + windowLengthMillis) - 1)
         count: 0
         
-    firstWindowStart = dateToWindowStart(dates[0], window)
+    firstWindowStart = dateToWindowStart(dates[0], window).getTime()
+    lastWindowStart = dates[dates.length-1].getTime()
     
     # create all the windows with a 0 count
-    windows = (makeWindow new Date dateMillis for dateMillis in [firstWindowStart.getTime()..dates[dates.length-1].getTime()] by windowMillis)
+    windows = (makeWindow(windowStartMillis) for windowStartMillis in [firstWindowStart..lastWindowStart] by windowLengthMillis)
     
     ###
     this has the (small) advantage of not requiring the dates to be sorted
