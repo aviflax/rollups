@@ -1,4 +1,4 @@
-#!/usr/bin/env scala
+#!/usr/bin/env scala -cp lib/* -deprecation
 !#
 
 /*
@@ -31,52 +31,44 @@ import io.Source._
 import scala.util.matching.Regex
 import java.text.SimpleDateFormat
 import java.util.Date
+import org.joda.time.Interval
+import org.joda.time.DateTime
+import java.util.concurrent.atomic.AtomicInteger
 
-val exampleLine = """168.75.67.132 - - [23/Nov/2011:17:29:24 -0500] "POST /fnic-1/pxcentral/notifications/policy.updated HTTP/1.1" 200 69 "-" "ShortBus/1.1 (Noelios-Restlet-Engine/1.1.5;Java 1.6.0_20;Windows 2003 5.2)""""
 
-// val input = stdin.getLines
-val input = exampleLine.lines
-
-//println(parse exampleLine)
-
-input map parse rollupImperative
-
-def parse(line:String):(Date, Int) = {
+def extractDate(line:String):DateTime = {
     val dateRegex = new Regex("""\[(.*)\]""")
     val dateString = dateRegex.findAllIn(line).matchData.next().subgroups(0)
     val dateFormat = new java.text.SimpleDateFormat("dd/MMM/yyyy:HH:mm:ss Z")
-    val date = dateFormat.parse(dateString)
     
-    val statusCodeRegex = new Regex("""" ([0-9]{3}) """) //"
-    val statusCodeString = statusCodeRegex.findAllIn(line).matchData.next().subgroups(0)
-    val statusCode = statusCodeString.toInt
+    dateFormat.parse(dateString)
     
-    (date, statusCode)
-}
-
-def rollupImperative(lines:List[(Date,Int)]):Iterable[(Date,Date,Int)] = {
-    var result = List()
-    
-    var currentStart = lines(0)._1
-    var currentCount = 0
-    
-    lines.foreach { line => {
-        val (date,status) = line
-
-        currentCount += 1
-
-        if (dateDiff(current._1, date) >= 5.minutes) {
-            result += (currentStart,date,currentCount)
-            currentStart = date
-            currentCount = 0
-        }
-    }}
-    
-    result
+    null
 }
 
 
+def makeWindow(date:DateTime, windowSpec:String, startCount:Int = 0) : (Interval, AtomicInteger) = null
 
 
+def rollup(windows:List[(Interval, AtomicInteger)], date:DateTime, windowSpec:String = "1d") : List[(Interval, AtomicInteger)] = {
+    var result:List[(Interval, AtomicInteger)] = windows
+
+    windows.find(_._1.contains(date)) match {
+        case Some(window) => window._2.incrementAndGet()
+        case None => result = windows :+ makeWindow(date, windowSpec, 1)
+    }
+    
+    return result
+}
 
 
+def toCsv(windows:List[(Interval, AtomicInteger)]):String = { null }
+
+
+var windows:List[(Interval, AtomicInteger)] = List()
+
+println("Processing input")
+
+stdin.getLines().foreach(line => windows = rollup(windows, extractDate(line)))
+
+print(toCsv(windows))
