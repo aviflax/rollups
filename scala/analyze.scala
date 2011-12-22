@@ -35,14 +35,14 @@ import org.joda.time.Interval
 import org.joda.time.DateTime
 
 
-def extractDate(line:String):DateTime = {
+def extractDate(line:String):Option[DateTime] = {
     val dateRegex = new Regex("""\[(.*)\]""")
     val dateString = dateRegex.findAllIn(line).matchData.next().subgroups(0)
     val dateFormat = new java.text.SimpleDateFormat("dd/MMM/yyyy:HH:mm:ss Z")
     
     dateFormat.parse(dateString)
     
-    null // TODO: return a Joda DateTime
+    None // TODO: return a Joda DateTime
 }
 
 
@@ -61,9 +61,15 @@ def toCsv(windows:List[(Interval, Int)]):String = null // TODO: return the CSV
 
 
 var windows = List[(Interval, Int)]()
+var errors = List[String]()
 
 println("Processing input")
 
-stdin.getLines().foreach(line => windows = rollup(windows, extractDate(line)))
+stdin.getLines().foreach(line => {
+    extractDate(line) match {
+        case Some(date) => windows = rollup(windows, date)
+        case None => errors :+ "No date found in " + line
+    }
+})
 
 print(toCsv(windows))
