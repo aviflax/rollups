@@ -60,6 +60,9 @@ def rollup(windows:List[(Interval, Int)], date:DateTime, windowSpec:String = "1d
 def toCsv(windows:List[(Interval, Int)]):String = null // TODO: return the CSV
 
 
+
+/*** BEGIN SCRIPT BODY ***/
+
 var windows = List[(Interval, Int)]()
 var errors = List[String]()
 
