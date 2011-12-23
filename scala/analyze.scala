@@ -31,8 +31,7 @@ import io.Source._
 import scala.util.matching.Regex
 import java.text.SimpleDateFormat
 import java.util.Date
-import org.joda.time.Interval
-import org.joda.time.DateTime
+import org.joda.time._
 
 
 def extractDate(line:String):Option[DateTime] = {
@@ -46,7 +45,38 @@ def extractDate(line:String):Option[DateTime] = {
 }
 
 
-def makeWindow(date:DateTime, windowSpec:String, startCount:Int = 0) : (Interval, Int) = null
+def makeWindow(dateTime:DateTime, windowSpec:String, startCount:Int = 0) : (Interval, Int) = {
+    val start = dateToWindowStart(dateTime, windowSpec)
+
+    val end:DateTime = null
+    
+    (new Interval(start, end), startCount)
+}
+
+
+def dateToWindowStart(dateTime:DateTime, windowSpec:String) : DateTime = null
+
+
+def windowSpecToPeriod(windowSpec:String) : Option[Object] = {
+    // TODO: Consider using a Joda PeriodFormatter to parse this
+
+    val windowSpecRegex = new Regex("""^(\d+)([mhdw])""")
+    val matches = windowSpecRegex.findAllIn(windowSpec.toLowerCase()).matchData.next()
+
+    if (matches.subgroups.length != 2) return None
+
+    val windowSpecNum = matches.subgroups(0).toInt
+    val windowSpecUnit = matches.subgroups(1)
+    
+    windowSpecUnit match {
+        case "m" => Some(Minutes.minutes(windowSpecNum))
+        case "h" => Some(Period.hours(windowSpecNum))
+        case "d" => Some(Period.days(windowSpecNum))
+        case "w" => Some(Period.weeks(windowSpecNum))
+        case  _  => None
+    }
+}
+
 
 
 def rollup(windows:List[(Interval, Int)], date:DateTime, windowSpec:String = "1d") : List[(Interval, Int)] = {
