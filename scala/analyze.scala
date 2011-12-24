@@ -57,23 +57,31 @@ def makeWindow(dateTime:DateTime, windowSpec:String, startCount:Int = 0) : (Inte
 def dateToWindowStart(dateTime:DateTime, windowSpec:String) : DateTime = null
 
 
-def windowSpecToPeriod(windowSpec:String) : Option[Object] = {
-    // TODO: Consider using a Joda PeriodFormatter to parse this
-
+def parseWindowSpec(windowSpec:String) : Option[(Int, String)] = {
     val windowSpecRegex = new Regex("""^(\d+)([mhdw])""")
     val matches = windowSpecRegex.findAllIn(windowSpec.toLowerCase()).matchData.next()
 
-    if (matches.subgroups.length != 2) return None
+    if (matches.subgroups.length == 2)
+        Some((matches.subgroups(0).toInt, matches.subgroups(1)))
+    else
+        None
+}
 
-    val windowSpecNum = matches.subgroups(0).toInt
-    val windowSpecUnit = matches.subgroups(1)
-    
-    windowSpecUnit match {
-        case "m" => Some(Minutes.minutes(windowSpecNum))
-        case "h" => Some(Period.hours(windowSpecNum))
-        case "d" => Some(Period.days(windowSpecNum))
-        case "w" => Some(Period.weeks(windowSpecNum))
-        case  _  => None
+
+
+def windowSpecToPeriod(windowSpec:String) : Option[Period] = {
+    parseWindowSpec(windowSpec) match {
+        case Some(windowSpec) => {
+            val (windowSpecNum, windowSpecUnit) = windowSpec
+            windowSpecUnit match {
+                case "m" => Some(Period.minutes(windowSpecNum))
+                case "h" => Some(Period.hours(windowSpecNum))
+                case "d" => Some(Period.days(windowSpecNum))
+                case "w" => Some(Period.weeks(windowSpecNum))
+                case  _  => None
+            }
+        }
+        case None => None
     }
 }
 
