@@ -29,19 +29,20 @@ Let's walk through this.
 
 import io.Source._
 import scala.util.matching.Regex
-import java.text.SimpleDateFormat
-import java.util.Date
 import org.joda.time._
+import org.joda.time.format._
 
 
 def extractDate(line:String):Option[DateTime] = {
     val dateRegex = new Regex("""\[(.*)\]""")
     val dateString = dateRegex.findAllIn(line).matchData.next().subgroups(0)
-    val dateFormat = new java.text.SimpleDateFormat("dd/MMM/yyyy:HH:mm:ss Z")
+    val formatter = DateTimeFormat.forPattern("dd/MMM/yyyy:HH:mm:ss Z")
     
-    dateFormat.parse(dateString)
-    
-    None // TODO: return a Joda DateTime
+    try
+        Some(formatter.parseDateTime(dateString))
+    catch {
+        case e => None
+    }
 }
 
 
