@@ -46,13 +46,19 @@ Let's walk through this.
 
 */
 
+import io.Source
 import io.Source._
 import scala.util.matching.Regex
 import org.joda.time._
 import org.joda.time.format._
 
 
-def extractDate(line:String):Option[DateTime] = {
+class Window(val interval:Interval, val count:Int) {
+    def incremented : Window = new Window(this.interval, this.count + 1)
+}
+
+
+def extractDate(line:String) : Option[DateTime] = {
     val dateRegex = new Regex("""\[(.*)\]""")
     val dateString = dateRegex.findAllIn(line).matchData.next().subgroups(0)
     val formatter = DateTimeFormat.forPattern("dd/MMM/yyyy:HH:mm:ss Z")
@@ -65,16 +71,24 @@ def extractDate(line:String):Option[DateTime] = {
 }
 
 
-def makeWindow(dateTime:DateTime, windowSpec:String, startCount:Int = 0) : (Interval, Int) = {
-    val start = dateToWindowStart(dateTime, windowSpec)
-
-    val end:DateTime = null
-    
-    (new Interval(start, end), startCount)
+def makeWindow(dateTime:DateTime, windowPeriod:ReadablePeriod, count:Int) : Window = {
+    // TODO: consider making this the constructor of Window
+    val start = dateToWindowStart(dateTime, windowPeriod)
+    val end = start.plus(windowPeriod)
+    new Window(new Interval(start, end), count)
 }
 
 
-def dateToWindowStart(dateTime:DateTime, windowSpec:String) : DateTime = null
+def dateToWindowStart(dateTime:DateTime, windowPeriod:ReadablePeriod) : DateTime = {
+    val base = dateTime.withSecondOfMinute(0).withMillisOfSecond(0)
+    
+    windowPeriod match {
+        case period:Hours => base.withMinuteOfHour(0)
+        case period:Days => base.withMinuteOfHour(0).withHourOfDay(0)
+        case period:Weeks => base.withMinuteOfHour(0).withHourOfDay(0).withDayOfWeek(1)
+        case _  => base
+    }
+}
 
 
 def parseWindowSpec(windowSpec:String) : Option[(Int, String)] = {
@@ -88,16 +102,14 @@ def parseWindowSpec(windowSpec:String) : Option[(Int, String)] = {
 }
 
 
-
-def windowSpecToPeriod(windowSpec:String) : Option[Period] = {
+def windowSpecToPeriod(windowSpec:String) : Option[ReadablePeriod] = {
     parseWindowSpec(windowSpec) match {
-        case Some(windowSpec) => {
-            val (windowSpecNum, windowSpecUnit) = windowSpec
+        case Some((windowSpecNum, windowSpecUnit)) => {
             windowSpecUnit match {
-                case "m" => Some(Period.minutes(windowSpecNum))
-                case "h" => Some(Period.hours(windowSpecNum))
-                case "d" => Some(Period.days(windowSpecNum))
-                case "w" => Some(Period.weeks(windowSpecNum))
+                case "m" => Some(Minutes.minutes(windowSpecNum))
+                case "h" => Some(Hours.hours(windowSpecNum))
+                case "d" => Some(Days.days(windowSpecNum))
+                case "w" => Some(Weeks.weeks(windowSpecNum))
                 case  _  => None
             }
         }
@@ -106,31 +118,48 @@ def windowSpecToPeriod(windowSpec:String) : Option[Period] = {
 }
 
 
-
-def rollup(windows:List[(Interval, Int)], date:DateTime, windowSpec:String = "1d") : List[(Interval, Int)] = {
-    if (windows.exists(_._1.contains(date)))
-        windows.map(window => if (window._1.contains(date)) (window._1, window._2 + 1) else window)
+def rollup(windows:List[Window], date:DateTime, windowPeriod:ReadablePeriod) : List[Window] = {
+    if (windows.exists(_.interval.contains(date)))
+        windows map { window => if (window.interval.contains(date)) window.incremented else window }
     else
-        windows :+ makeWindow(date, windowSpec, 1)
+        windows :+ makeWindow(date, windowPeriod, 1)
 }
 
 
-def toCsv(windows:List[(Interval, Int)]):String = null // TODO: return the CSV
+def toCsv(windows:List[Window]) : String = null // TODO: return the CSV
 
+
+def sourceToCsv(source:Source, windowPeriod:ReadablePeriod) : (String, List[String]) = {
+    var windows = List[Window]()
+    var errors = List[String]()
+    
+    source.getLines().foreach(line => {
+        extractDate(line) match {
+            case Some(date) => windows = rollup(windows, date, windowPeriod)
+            case None => errors :+ "No date found in " + line
+        }
+    })
+
+    (toCsv(windows), errors)
+}
 
 
 /*** BEGIN SCRIPT BODY ***/
 
-var windows = List[(Interval, Int)]()
-var errors = List[String]()
+// TODO: change to a command-line arg
+val windowSpecArg = "1d"
+
+
+
+val windowPeriod = windowSpecToPeriod(windowSpecArg) match {
+    case Some(period) => period
+    case None => {
+        // TODO: HACK
+        System.exit(1)
+        new Period()
+    }
+}
 
 println("Processing input")
 
-stdin.getLines().foreach(line => {
-    extractDate(line) match {
-        case Some(date) => windows = rollup(windows, date)
-        case None => errors :+ "No date found in " + line
-    }
-})
-
-print(toCsv(windows))
+println(sourceToCsv(stdin, windowPeriod))
