@@ -126,10 +126,10 @@ def rollup(windows:List[Window], date:DateTime, windowPeriod:ReadablePeriod) : L
 }
 
 
-def toCsv(windows:List[Window]) : String = null // TODO: return the CSV
+def rollupToCsv(windows:List[Window]) : String = windows.mkString // TODO: return the CSV
 
 
-def sourceToCsv(source:Source, windowPeriod:ReadablePeriod) : (String, List[String]) = {
+def sourceToRollup(source:Source, windowPeriod:ReadablePeriod) : (List[Window], List[String]) = {
     var windows = List[Window]()
     var errors = List[String]()
     
@@ -140,8 +140,10 @@ def sourceToCsv(source:Source, windowPeriod:ReadablePeriod) : (String, List[Stri
         }
     })
 
-    (toCsv(windows), errors)
+    (windows, errors)
 }
+
+
 
 
 /*** BEGIN SCRIPT BODY ***/
@@ -162,4 +164,7 @@ val windowPeriod = windowSpecToPeriod(windowSpecArg) match {
 
 println("Processing input")
 
-println(sourceToCsv(stdin, windowPeriod))
+val (rollup, errors) = sourceToRollup(stdin, windowPeriod)
+
+System.out.print(rollupToCsv(rollup))
+System.err.print(errors.mkString)
