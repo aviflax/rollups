@@ -10,6 +10,7 @@ Each line looks like this:
 
 
 ## POSSIBLE TO DOS:
+* Decide whether data must be passed in sorted or not (would allow for some optimizations)
 * Add behaviour tests!!
 * Support parallellization (off by default)
 * Support other event timestamp formats
@@ -160,7 +161,8 @@ Array.prototype.firstFromRight = (func) ->
 rollup = (windows, date, windowSpec='1d') ->
     return windows if not date
     
-    matchingWindow = windows.firstFromRight (window) ->  window.start <= date < window.end
+    # if we decide that the data will always be sorted, we can make this faster by just checking the last item in the array
+    matchingWindow = windows.firstFromRight (window) -> window.start <= date < window.end
     
     if matchingWindow
         # TODO: stop mutating!
