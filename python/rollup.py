@@ -132,14 +132,14 @@ def firstFromRight(list, func):
 def rollup(windows, date, windowSpec='1d'):
     if not date: return windows
     
-    matchingWindow = firstFromRight(windows, lambda window: window.start <= date < window.end)
+    matching_window = firstFromRight(windows, lambda window: window.start <= date < window.end)
     
-    if matchingWindow:
+    if matching_window:
         # TODO: stop mutating!
-        matchingWindow.count += 1
+        matching_window.count += 1
         return windows
     else:
-        return windows + [makeWindow(date, windowSpec, 1)]
+        return windows + [make_window(date, windowSpec, 1)]
         
 '''
 
