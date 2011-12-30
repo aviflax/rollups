@@ -1,6 +1,24 @@
 #!/usr/bin/env coffee
 
 ###
+Copyright © Avi Flax and other contributors
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+See the file LICENSE in the root of this project for the full license.
+###
+
+###
 rollup.coffee — given a line-delimited list of dates from Apache httpd access logs, count how many requests occurred in a given time window.
 
 Each line looks like this:
@@ -9,13 +27,17 @@ Each line looks like this:
 ## BUGS
 
 
+## DEFINITE TO DOS:
+* Support other event timestamp formats
+* Support other output formats (starting with JSON)
+* Support cmd-line arg for csv separator
+* Refactor to be usable as a general-purpose library, either in Node or in a browser
+
+
 ## POSSIBLE TO DOS:
 * Decide whether data must be passed in sorted or not (would allow for some optimizations)
 * Add behaviour tests!!
 * Support parallellization (off by default)
-* Support other event timestamp formats
-* Support other output formats (starting with JSON)
-* Support cmd-line arg for csv separator
 * Add an option to specify whether weeks should start on Sunday or Monday
 * Support rollup windows of N months
 * Support the input already being a rollup, of which we'd do a bigger rollup
