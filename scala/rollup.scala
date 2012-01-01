@@ -54,7 +54,7 @@ import org.joda.time.format._
 
 
 class Window(val interval:Interval, val count:Int) {
-    def incremented : Window = new Window(this.interval, this.count + 1)
+    def incremented : Window = new Window(interval, count + 1)
 }
 
 
@@ -126,7 +126,8 @@ def rollup(windows:List[Window], date:DateTime, windowPeriod:ReadablePeriod) : L
 }
 
 
-def rollupToCsv(windows:List[Window]) : String = windows.mkString // TODO: return the CSV
+// TODO: actually convert to CSV
+def rollupToCsv(windows:List[Window]) : String = windows.map(window ⇒ window.interval.toString() + " : " + window.count).mkString("\n")
 
 
 def sourceToRollup(source:Source, windowPeriod:ReadablePeriod) : (List[Window], List[String]) = {
