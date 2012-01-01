@@ -19,35 +19,9 @@ included in all copies or substantial portions of the Software.
 See the file LICENSE in the root of this project for the full license.
 */
 
-
-/*
-
-I want to analyze a bunch of Apache access logs.
-
-Each line looks like this:
-168.75.67.132 - - [23/Nov/2011:17:29:24 -0500] "POST /fnic-1/pxcentral/notifications/policy.updated HTTP/1.1" 200 69 "-" "ShortBus/1.1 (Noelios-Restlet-Engine/1.1.5;Java 1.6.0_20;Windows 2003 5.2)"
-
-That's the "combined" format.
-
-The rollup should be dynamic.
-
-I want to build a few stats for each given time period (the rollup):
-    - total requests
-    - 50x errors
-    - error rate (percentage of total which were errors)
-    - 
-    
-Let's walk through this.
-    for each line I want to:
-        determine if it's in the current rollup slice or if I need to start a new slice
-        increment the number of total requests
-        if it's an error, increment the total number of errors
-    
-
-*/
-
 import io.Source
 import io.Source._
+import java.io.InputStream
 import scala.util.matching.Regex
 import org.joda.time._
 import org.joda.time.format._
@@ -118,33 +92,44 @@ def windowSpecToPeriod(windowSpec:String) : Option[ReadablePeriod] = {
 }
 
 
-def rollup(windows:List[Window], date:DateTime, windowPeriod:ReadablePeriod) : List[Window] = {
-    if (windows.exists(_.interval.contains(date)))
-        windows map { window => if (window.interval.contains(date)) window.incremented else window }
+/** The main rollup fold function.
+  * Intended to be used by a fold, curried with the windowPeriod arg.
+  * So: foldLeft(List[Window]).rollup(Minutes.minutes(5))
+  */
+def rollup(windowPeriod:ReadablePeriod)(windows:List[Window], dateTime:DateTime) : List[Window] = {
+    // TODO: this is probably super slow. Try using indexOf and patch to greatly increase speed
+    if (windows.exists(_.interval.contains(dateTime)))
+        windows map { window => if (window.interval.contains(dateTime)) window.incremented else window }
     else
-        windows :+ makeWindow(date, windowPeriod, 1)
+        windows :+ makeWindow(dateTime, windowPeriod, 1)
 }
 
 
-// TODO: actually convert to CSV
-def rollupToCsv(windows:List[Window]) : String = windows.map(window ⇒ window.interval.toString() + " : " + window.count).mkString("\n")
+def rollup(dateTimes:List[DateTime], windowPeriod:ReadablePeriod) : List[Window] = dateTimes.foldLeft(List[Window]())(rollup(windowPeriod))
 
 
-def sourceToRollup(source:Source, windowPeriod:ReadablePeriod) : (List[Window], List[String]) = {
-    var windows = List[Window]()
+def rollup(stream:InputStream, windowPeriod:ReadablePeriod) : (List[Window], List[String]) = rollup(Source.fromInputStream(stream), windowPeriod)
+
+
+def rollup(source:Source, windowPeriod:ReadablePeriod) : (List[Window], List[String]) = {
     var errors = List[String]()
     
-    source.getLines().foreach(line => {
+    val windows = source.getLines().foldLeft(List[DateTime]()) { (dates, line) ⇒
         extractDate(line) match {
-            case Some(date) => windows = rollup(windows, date, windowPeriod)
-            case None => errors :+ "No date found in " + line
+            case Some(date) => dates :+ date
+            case None => {
+                errors :+ "No date found in " + line
+                dates
+            }
         }
-    })
+    }.foldLeft(List[Window]())(rollup(windowPeriod))
 
     (windows, errors)
 }
 
 
+// TODO: actually convert to CSV
+def rollupToCsv(windows:List[Window]) : String = windows.map(window ⇒ window.interval.toString() + " : " + window.count).mkString("\n")
 
 
 /*** BEGIN SCRIPT BODY ***/
@@ -165,7 +150,7 @@ val windowPeriod = windowSpecToPeriod(windowSpecArg) match {
 
 println("Processing input")
 
-val (rollup, errors) = sourceToRollup(stdin, windowPeriod)
+val (windows, errors) = rollup(stdin, windowPeriod)
 
-System.out.print(rollupToCsv(rollup))
+System.out.print(rollupToCsv(windows))
 System.err.print(errors.mkString)
