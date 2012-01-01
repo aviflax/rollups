@@ -33,14 +33,16 @@ class Window(val interval:Interval, val count:Int) {
 
 
 def extractDate(line:String) : Option[DateTime] = {
-    val dateRegex = new Regex("""\[(.*)\]""")
-    val dateString = dateRegex.findAllIn(line).matchData.next().subgroups(0)
+    val dateRegex = new Regex("""\[(.+)\]""")
+    val matches = dateRegex.findAllIn(line)
+    if (matches == null) return None
+    val dateString = matches.matchData.next().subgroups(0)
     val formatter = DateTimeFormat.forPattern("dd/MMM/yyyy:HH:mm:ss Z")
     
     try
         Some(formatter.parseDateTime(dateString))
     catch {
-        case e => None
+        case e ⇒ None
     }
 }
 
@@ -57,10 +59,10 @@ def dateToWindowStart(dateTime:DateTime, windowPeriod:ReadablePeriod) : DateTime
     val base = dateTime.withSecondOfMinute(0).withMillisOfSecond(0)
     
     windowPeriod match {
-        case period:Hours => base.withMinuteOfHour(0)
-        case period:Days => base.withMinuteOfHour(0).withHourOfDay(0)
-        case period:Weeks => base.withMinuteOfHour(0).withHourOfDay(0).withDayOfWeek(1)
-        case _  => base
+        case period:Hours ⇒ base.withMinuteOfHour(0)
+        case period:Days ⇒ base.withMinuteOfHour(0).withHourOfDay(0)
+        case period:Weeks ⇒ base.withMinuteOfHour(0).withHourOfDay(0).withDayOfWeek(1)
+        case _ ⇒ base
     }
 }
 
@@ -78,7 +80,7 @@ def parseWindowSpec(windowSpec:String) : Option[(Int, String)] = {
 
 def windowSpecToPeriod(windowSpec:String) : Option[ReadablePeriod] = {
     parseWindowSpec(windowSpec) match {
-        case Some((windowSpecNum, windowSpecUnit)) => {
+        case Some((windowSpecNum, windowSpecUnit)) ⇒ {
             windowSpecUnit match {
                 case "m" => Some(Minutes.minutes(windowSpecNum))
                 case "h" => Some(Hours.hours(windowSpecNum))
@@ -97,10 +99,9 @@ def windowSpecToPeriod(windowSpec:String) : Option[ReadablePeriod] = {
   * So: foldLeft(List[Window]).rollup(Minutes.minutes(5))
   */
 def rollup(windowPeriod:ReadablePeriod)(windows:List[Window], dateTime:DateTime) : List[Window] = {
-    val existingWindowIndex = windows.indexWhere(_.interval.contains(dateTime))
-    
-    if (existingWindowIndex >= 0)
-        windows.updated(existingWindowIndex, windows(existingWindowIndex).incremented)
+    // TODO: requires that the input be sorted. Would be more flexible to search from the end.
+    if (windows.length > 0 && windows.last.interval.contains(dateTime))
+        windows.updated(windows.length - 1, windows.last.incremented)
     else
         windows :+ makeWindow(dateTime, windowPeriod, 1)
 }
@@ -137,7 +138,6 @@ def rollupToCsv(windows:List[Window]) : String = windows.map(window ⇒ window.i
 
 // TODO: change to a command-line arg
 val windowSpecArg = "1d"
-
 
 
 val windowPeriod = windowSpecToPeriod(windowSpecArg) match {
