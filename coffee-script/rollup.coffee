@@ -235,6 +235,8 @@ argv = optimist.argv
 linestream = new LineStream process.stdin
 
 # TODO: this gets mutated (replaced) with every 'data' event below. Is that OK?
+### It'd be more functional to treat the lines as a sequence. Gotta look into some
+    way to do that in Node ###
 windows = []
 
 linestream.on 'data', (line) -> windows = rollup windows, extractDate(line), argv.w
