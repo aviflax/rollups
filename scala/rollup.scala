@@ -148,8 +148,6 @@ val windowPeriod = windowSpecToPeriod(windowSpecArg) match {
     }
 }
 
-println("Processing input")
-
 val (windows, errors) = rollup(stdin, windowPeriod)
 
 System.out.print(rollupToCsv(windows))
