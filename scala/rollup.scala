@@ -97,9 +97,10 @@ def windowSpecToPeriod(windowSpec:String) : Option[ReadablePeriod] = {
   * So: foldLeft(List[Window]).rollup(Minutes.minutes(5))
   */
 def rollup(windowPeriod:ReadablePeriod)(windows:List[Window], dateTime:DateTime) : List[Window] = {
-    // TODO: this is probably super slow. Try using indexOf and patch to greatly increase speed
-    if (windows.exists(_.interval.contains(dateTime)))
-        windows map { window => if (window.interval.contains(dateTime)) window.incremented else window }
+    val existingWindowIndex = windows.indexWhere(_.interval.contains(dateTime))
+    
+    if (existingWindowIndex >= 0)
+        windows.updated(existingWindowIndex, windows(existingWindowIndex).incremented)
     else
         windows :+ makeWindow(dateTime, windowPeriod, 1)
 }
