@@ -33,7 +33,7 @@ class Window(val interval:Interval, val count:Int) {
 
 
 def extractDate(line:String) : Option[DateTime] = {
-    val dateRegex = new Regex("""\[(.+)\]""")
+    val dateRegex = new Regex("""\[([^\]]+)\]""")
     val matches = dateRegex.findAllIn(line)
     if (matches == null) return None
     val dateString = matches.matchData.next().subgroups(0)
@@ -120,7 +120,7 @@ def rollup(source:Source, windowPeriod:ReadablePeriod) : (List[Window], List[Str
         extractDate(line) match {
             case Some(date) => dates :+ date
             case None => {
-                errors :+ "No date found in " + line
+                errors = errors :+ "No date found in " + line
                 dates
             }
         }
@@ -152,4 +152,4 @@ val windowPeriod = windowSpecToPeriod(windowSpecArg) match {
 val (windows, errors) = rollup(stdin, windowPeriod)
 
 System.out.print(rollupToCsv(windows))
-System.err.print(errors.mkString)
+System.err.print(errors.mkString("\n"))
