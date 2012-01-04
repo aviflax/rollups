@@ -131,8 +131,19 @@ def rollup(source:Source, windowPeriod:ReadablePeriod) : (List[Window], List[Str
 
 
 // TODO: actually convert to CSV
-def rollupToCsv(windows:List[Window]) : String = windows.map(window ⇒ window.interval.toString() + " : " + window.count).mkString("\n")
-
+def rollupToCsv(windows:List[Window], separator:String = "\t") : String = {
+    val formatter = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm")
+    
+    windows.foldLeft("Start" + separator + "End" + separator + "Count\n") {(string, window) ⇒
+        string +
+        formatter.print(window.interval.getStart()) +
+        separator +
+        formatter.print(window.interval.getEnd()) +
+        separator +
+        window.count +
+        "\n"
+    }
+}
 
 /*** BEGIN SCRIPT BODY ***/
 
