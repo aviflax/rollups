@@ -35,7 +35,7 @@ class Window(val interval:Interval, val count:Int) {
 def extractDate(line:String) : Option[DateTime] = {
     val dateRegex = new Regex("""\[([^\]]+)\]""")
     val matches = dateRegex.findAllIn(line)
-    if (matches == null) return None
+    if (!matches.hasNext) return None
     val dateString = matches.matchData.next().subgroups(0)
     val formatter = DateTimeFormat.forPattern("dd/MMM/yyyy:HH:mm:ss Z")
     
