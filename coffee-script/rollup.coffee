@@ -163,36 +163,35 @@ addWindowDurationToStartDate = (startDate, windowSpec) ->
             end
 
 
-copyWindow = (window) ->
+incrementWindow = (window) ->
     start: window.start
     end: window.end
-    count: window.count
+    count: window.count + 1
 
-
-Array.prototype.firstFromRight = (func) ->
-    found = false
+# Finds index of the first element satisfiying the predicate, searching the array from right (end) to left (beginning)
+Array.prototype.indexWhereRight = (predicate) ->
     i = this.length - 1
-    
-    until found or i < 0
+
+    until i < 0 or predicate(this[i])
         i--
-        found = func this[i+1]
-        
-    if found then this[i+1] else null
+
+    i
+
+
+# Return a copy of an array with an element at a specified index replaced with a new value
+Array.prototype.updated = (index, value) -> this.slice(0, index).concat(value, this.slice(index + 1))
 
 
 rollup = (windows, date, windowSpec='1d') ->
     return windows if not date
     
     # if we decide that the data will always be sorted, we can make this faster by just checking the last item in the array
-    matchingWindow = windows.firstFromRight (window) -> window.start <= date < window.end
+    matchingWindowIndex = windows.indexWhereRight (window) -> window.start <= date < window.end
     
-    if matchingWindow
-        # TODO: stop mutating!
-        matchingWindow.count++
-        windows
+    if matchingWindowIndex >= 0
+        windows.updated matchingWindowIndex, incrementWindow(windows[matchingWindowIndex])
     else
         windows.concat makeWindow date, windowSpec, 1
-        
 
 
 toCsv = (windows, separator='\t') ->
