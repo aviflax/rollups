@@ -28,6 +28,7 @@ import org.joda.time.format._
 
 
 class Window(val interval:Interval, val count:Int) {
+    def this(dateTime:DateTime, windowPeriod:ReadablePeriod, count:Int) = this(new Interval(dateToWindowStart(dateTime, windowPeriod), dateToWindowStart(dateTime, windowPeriod).plus(windowPeriod)), count)
     def incremented : Window = new Window(interval, count + 1)
 }
 
@@ -44,14 +45,6 @@ def extractDate(line:String) : Option[DateTime] = {
     catch {
         case e ⇒ None
     }
-}
-
-
-def makeWindow(dateTime:DateTime, windowPeriod:ReadablePeriod, count:Int) : Window = {
-    // TODO: consider making this the constructor of Window
-    val start = dateToWindowStart(dateTime, windowPeriod)
-    val end = start.plus(windowPeriod)
-    new Window(new Interval(start, end), count)
 }
 
 
@@ -103,7 +96,7 @@ def rollup(windowPeriod:ReadablePeriod)(windows:List[Window], dateTime:DateTime)
     if (windows.length > 0 && windows.last.interval.contains(dateTime))
         windows.updated(windows.length - 1, windows.last.incremented)
     else
-        windows :+ makeWindow(dateTime, windowPeriod, 1)
+        windows :+ new Window(dateTime, windowPeriod, 1)
 }
 
 
@@ -130,7 +123,6 @@ def rollup(source:Source, windowPeriod:ReadablePeriod) : (List[Window], List[Str
 }
 
 
-// TODO: actually convert to CSV
 def rollupToCsv(windows:List[Window], separator:String = "\t") : String = {
     val formatter = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm")
     
