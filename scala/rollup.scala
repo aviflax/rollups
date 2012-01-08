@@ -33,6 +33,42 @@ class Window(val interval:Interval, val count:Int) {
 }
 
 
+def rollup(dateTimes:List[DateTime], windowPeriod:ReadablePeriod) : List[Window] = dateTimes.foldLeft(List[Window]())(rollup(windowPeriod))
+
+
+/** The main rollup fold function.
+  * Intended to be used by a fold, “curried” with the windowPeriod arg.
+  * So: foldLeft(List[Window]).rollup(Minutes.minutes(5))
+  */
+def rollup(windowPeriod:ReadablePeriod)(windows:List[Window], dateTime:DateTime) : List[Window] = {
+    // TODO: requires that the input be sorted. Would be more flexible to search from the end (but slower).
+    if (windows.length > 0 && windows.last.interval.contains(dateTime))
+        windows.updated(windows.length - 1, windows.last.incremented)
+    else
+        windows :+ new Window(dateTime, windowPeriod, 1)
+}
+
+
+def rollup(stream:InputStream, windowPeriod:ReadablePeriod) : (List[Window], List[String]) = rollup(Source.fromInputStream(stream), windowPeriod)
+
+
+def rollup(source:Source, windowPeriod:ReadablePeriod) : (List[Window], List[String]) = {
+    var errors = List[String]()
+    
+    val windows = source.getLines().foldLeft(List[DateTime]()) { (dates, line) ⇒
+        extractDate(line) match {
+            case Some(date) => dates :+ date
+            case None => {
+                errors = errors :+ "No date found in " + line
+                dates
+            }
+        }
+    }.foldLeft(List[Window]())(rollup(windowPeriod))
+
+    (windows, errors)
+}
+
+
 def extractDate(line:String) : Option[DateTime] = {
     val dateRegex = new Regex("""\[([^\]]+)\]""")
     val matches = dateRegex.findAllIn(line)
@@ -84,42 +120,6 @@ def windowSpecToPeriod(windowSpec:String) : Option[ReadablePeriod] = {
         }
         case None => None
     }
-}
-
-
-/** The main rollup fold function.
-  * Intended to be used by a fold, curried with the windowPeriod arg.
-  * So: foldLeft(List[Window]).rollup(Minutes.minutes(5))
-  */
-def rollup(windowPeriod:ReadablePeriod)(windows:List[Window], dateTime:DateTime) : List[Window] = {
-    // TODO: requires that the input be sorted. Would be more flexible to search from the end.
-    if (windows.length > 0 && windows.last.interval.contains(dateTime))
-        windows.updated(windows.length - 1, windows.last.incremented)
-    else
-        windows :+ new Window(dateTime, windowPeriod, 1)
-}
-
-
-def rollup(dateTimes:List[DateTime], windowPeriod:ReadablePeriod) : List[Window] = dateTimes.foldLeft(List[Window]())(rollup(windowPeriod))
-
-
-def rollup(stream:InputStream, windowPeriod:ReadablePeriod) : (List[Window], List[String]) = rollup(Source.fromInputStream(stream), windowPeriod)
-
-
-def rollup(source:Source, windowPeriod:ReadablePeriod) : (List[Window], List[String]) = {
-    var errors = List[String]()
-    
-    val windows = source.getLines().foldLeft(List[DateTime]()) { (dates, line) ⇒
-        extractDate(line) match {
-            case Some(date) => dates :+ date
-            case None => {
-                errors = errors :+ "No date found in " + line
-                dates
-            }
-        }
-    }.foldLeft(List[Window]())(rollup(windowPeriod))
-
-    (windows, errors)
 }
 
 
