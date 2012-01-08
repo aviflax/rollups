@@ -54,7 +54,13 @@ def rollup(stream:InputStream, windowPeriod:ReadablePeriod) : (List[Window], Lis
 
 def rollup(source:Source, windowPeriod:ReadablePeriod) : (List[Window], List[String]) = {
     var errors = List[String]()
-    
+
+    /* TODO: this block collects errors as a side-effect. Is there a better way to do this?
+     *   I tried to map extractDate on getLines() then do a partition but that’s not typesafe...
+     *   If I don't want to return errors, this could be as simple as something like this:
+     *      source.getLines().map(extractDate).foldLeft(List[Window]())(rollup(windowPeriod))
+     *    ... but I do want to return errors...
+     */
     val windows = source.getLines().foldLeft(List[DateTime]()) { (dates, line) ⇒
         extractDate(line) match {
             case Some(date) => dates :+ date
