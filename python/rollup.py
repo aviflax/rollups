@@ -48,11 +48,14 @@ Each line looks like this:
 import argparse
 import sys
 import dateutil
-
+from functools import partial
 
 
 def extractDate(line):
-    dateutil.parser.parse(text, fuzzy=True).date()
+    try:
+        dateutil.parser.parse(text).date()
+    except:
+        return null
 
 
 '''
@@ -147,7 +150,7 @@ def firstFromRight(list, func):
     return list[i+1] if found else null
 
 
-def rollup(windows, date, windowSpec='1d'):
+def rollup(windowSpec='1d', windows, date):
     if not date: return windows
     
     matching_window = firstFromRight(windows, lambda window: window.start <= date < window.end)
@@ -159,36 +162,7 @@ def rollup(windows, date, windowSpec='1d'):
     else:
         return windows + [make_window(date, windowSpec, 1)]
         
-'''
 
-toCsv = (windows, separator='\t') ->
-    'Start' + separator + 'End' + separator + 'Count\n' +
-        windows.reduce ((previous, window) ->
-            previous +
-            formatDateTimeForCsv(window.start) +
-            separator +
-            formatDateTimeForCsv(window.end) +
-            separator +
-            window.count +
-            '\n'), ''
-
-
-padZeroLeft = (number) -> (if number < 10 then '0' else '') + number
-
-formatDateTimeForCsv = (date) ->
-    '' +
-    date.getFullYear() + 
-    '-' +
-    padZeroLeft(date.getMonth() + 1) +
-    '-' +
-    padZeroLeft(date.getDate()) +
-    ' ' +
-    padZeroLeft(date.getHours()) +
-    ':' +
-    padZeroLeft(date.getMinutes())
-
-
-'''
 ### SCRIPT BODY ###
 
 
@@ -198,10 +172,6 @@ parser.add_argument('-w', '--window', required=True, help='Time window size for 
 
 args = vars(parser.parse_args())
 
-# TODO: this gets mutated (replaced) with every 'data' event below. Is that OK?
-windows = []
-
-for line in sys.stdin.readlines():
-    windows = rollup(windows, extract_date(line), args['window'])
+windows = reduce(partial(rollup, args['window']), map(extract_date, sys.stdin), [])
 
 print(to_csv(windows))
