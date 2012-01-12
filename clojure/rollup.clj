@@ -54,19 +54,20 @@ See the file LICENSE in the root of this project for the full license.")
             (Window. (interval start end) 1)))
 
 
-(defn rollup-dates [period windows date-time]
+(defn rollup-reduce [period windows date-time]
     (if
         (and (seq windows) (within? (:interval (last windows)) date-time))
         (assoc windows (dec (count windows)) (increment-window (last windows)))
         (assoc windows (count windows) (make-window date-time period))))
 
 
+(defn rollup-dates [dates period]
+    (reduce (partial rollup-reduce period) [] dates))
+
+
 (defn rollup-stream [stream period]
     (let [lines (line-seq (reader stream))]
-        (reduce (partial rollup-dates period) [] (map extract-date lines))))
-
-
-(println (rollup-stream *in* (days 1)))
+        (rollup-dates (map extract-date lines) period)))
 
 
 (defn rollup-to-csv [windows separator]
