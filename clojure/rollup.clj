@@ -19,9 +19,9 @@ See the file LICENSE in the root of this project for the full license.")
 
 
 (ns rollup
-    (use [clojure.java.io :only [reader]])
-    (use clj-time.core)
-    (use clj-time.format)
+    (:use [clojure.java.io :only [reader]])
+    (:use [clj-time.core :only [interval days end plus start within?]])
+    (:use [clj-time.format :only [formatter parse unparse]])
     (:import (org.joda.time Hours Days Weeks)))
 
 
