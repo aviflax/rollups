@@ -39,11 +39,11 @@ See the file LICENSE in the root of this project for the full license.")
 
 
 (defn date-to-window-start [date-time period]
-    (let [base (.withMillisOfSecond (.withSecondOfMinute date-time 0) 0)]
+    (let [base (-> date-time (.withMillisOfSecond 0) (.withSecondOfMinute 0))]
         (condp instance? period
             Hours (.withMinuteOfHour base 0)
-            Days (.withMinuteOfHour (.withHourOfDay base 0) 0)
-            Weeks (.withMinuteOfHour (.withHourOfDay (.withDayOfWeek base 0) 0) 0)
+            Days (-> base (.withMinuteOfHour 0) (.withHourOfDay 0))
+            Weeks (-> base (.withMinuteOfHour 0) (.withHourOfDay 0) (.withDayOfWeek 0))
             base
             )))
 
