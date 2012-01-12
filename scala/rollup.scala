@@ -33,46 +33,45 @@ class Window(val interval:Interval, val count:Int) {
 }
 
 
-def rollup(dateTimes:List[DateTime], windowPeriod:ReadablePeriod) : List[Window] = dateTimes.foldLeft(List[Window]())(rollup(windowPeriod))
+class RollupResults(val windows:List[Window] = List[Window](), val errors:List[String] = List[String]())
+
+
+abstract class LineParseResult
+case class EventDateTime(val dateTime:DateTime) extends LineParseResult
+case class ErrorMessage(val error:String) extends LineParseResult
+
+
+def rollup(dateTimes:List[DateTime], windowPeriod:ReadablePeriod) : RollupResults = dateTimes.map(new EventDateTime(_)).foldLeft(new RollupResults())(rollup(windowPeriod))
 
 
 /** The main rollup fold function.
   * Intended to be used by a fold, “curried” with the windowPeriod arg.
   * So: foldLeft(List[Window]).rollup(Minutes.minutes(5))
   */
-def rollup(windowPeriod:ReadablePeriod)(windows:List[Window], dateTime:DateTime) : List[Window] = {
-    // TODO: requires that the input be sorted. Would be more flexible to search from the end (but slower).
-    if (windows.length > 0 && windows.last.interval.contains(dateTime))
-        windows.updated(windows.length - 1, windows.last.incremented)
-    else
-        windows :+ new Window(dateTime, windowPeriod, 1)
-}
-
-
-def rollup(stream:InputStream, windowPeriod:ReadablePeriod) : (List[Window], List[String]) = rollup(Source.fromInputStream(stream), windowPeriod)
-
-
-def rollup(source:Source, windowPeriod:ReadablePeriod) : (List[Window], List[String]) = {
-    var errors = List[String]()
-
-    /* TODO: this block collects errors as a side-effect. Is there a better way to do this?
-     *   I tried to map extractDate on getLines() then do a partition but that’s not typesafe...
-     *   If I don't want to return errors, this could be as simple as something like this:
-     *      source.getLines().map(extractDate).foldLeft(List[Window]())(rollup(windowPeriod))
-     *    ... but I do want to return errors...
-     */
-    val windows = source.getLines().foldLeft(List[DateTime]()) { (dates, line) ⇒
-        extractDate(line) match {
-            case Some(date) => dates :+ date
-            case None => {
-                errors = errors :+ "No date found in " + line
-                dates
-            }
+def rollup(windowPeriod:ReadablePeriod)(results:RollupResults, lineParseResult:LineParseResult) : RollupResults = {
+    lineParseResult match {
+        case EventDateTime(dateTime) ⇒ {
+            // TODO: requires that the input be sorted. Would be more flexible to search from the end (but slower).
+            if (results.windows.length > 0 && results.windows.last.interval.contains(dateTime))
+                new RollupResults(results.windows.updated(results.windows.length - 1, results.windows.last.incremented), results.errors)
+            else
+                new RollupResults(results.windows :+ new Window(dateTime, windowPeriod, 1), results.errors)            
         }
-    }.foldLeft(List[Window]())(rollup(windowPeriod))
-
-    (windows, errors)
+        case ErrorMessage(error) ⇒ new RollupResults(results.windows, results.errors :+ error)
+    }
 }
+
+
+def rollup(stream:InputStream, windowPeriod:ReadablePeriod) : RollupResults = rollup(Source.fromInputStream(stream), windowPeriod)
+
+
+def rollup(source:Source, windowPeriod:ReadablePeriod) : RollupResults =
+    source.getLines().map(
+           (line:String) ⇒ extractDate(line) match {
+                case Some(dateTime) ⇒ new EventDateTime(dateTime)
+                case None ⇒ new ErrorMessage("No date found in " + line)
+            }
+        ).foldLeft(new RollupResults())(rollup(windowPeriod))
 
 
 def extractDate(line:String) : Option[DateTime] = {
@@ -117,11 +116,11 @@ def windowSpecToPeriod(windowSpec:String) : Option[ReadablePeriod] = {
     parseWindowSpec(windowSpec) match {
         case Some((windowSpecNum, windowSpecUnit)) ⇒ {
             windowSpecUnit match {
-                case "m" => Some(Minutes.minutes(windowSpecNum))
-                case "h" => Some(Hours.hours(windowSpecNum))
-                case "d" => Some(Days.days(windowSpecNum))
-                case "w" => Some(Weeks.weeks(windowSpecNum))
-                case  _  => None
+                case "m" ⇒ Some(Minutes.minutes(windowSpecNum))
+                case "h" ⇒ Some(Hours.hours(windowSpecNum))
+                case "d" ⇒ Some(Days.days(windowSpecNum))
+                case "w" ⇒ Some(Weeks.weeks(windowSpecNum))
+                case  _  ⇒ None
             }
         }
         case None => None
@@ -158,7 +157,7 @@ val windowPeriod = windowSpecToPeriod(windowSpecArg) match {
     }
 }
 
-val (windows, errors) = rollup(stdin, windowPeriod)
+val results = rollup(stdin, windowPeriod)
 
-System.out.print(rollupToCsv(windows))
-System.err.print(errors.mkString("\n"))
+System.out.print(rollupToCsv(results.windows))
+System.err.print(results.errors.mkString("\n"))
