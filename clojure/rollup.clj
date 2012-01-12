@@ -67,3 +67,22 @@ See the file LICENSE in the root of this project for the full license.")
 
 
 (println (rollup-stream *in* (days 1)))
+
+
+(defn rollup-to-csv [windows separator]
+    ; TODO: make separator optional, with the default value "\t"
+    (let [date-formatter (formatter "yyyy-MM-dd HH:mm")]
+        (reduce
+            #(str
+                %
+                (unparse date-formatter (start (:interval %2)))
+                separator
+                (unparse date-formatter (end (:interval %2)))
+                separator
+                (:count %2)
+                "\n")
+            (str "Start" separator "End"  separator  "Count" "\n")
+            windows)))
+
+
+(println (rollup-to-csv (rollup-stream *in* (days 1)) "\t"))
