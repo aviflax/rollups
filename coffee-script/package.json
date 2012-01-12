@@ -1,12 +1,12 @@
 {
   "name": "Rollups",
   "version": "0.1.0",
-  "description": "Exercises in writing time-window rollups in various languages",
+  "description": "A tool and a library for doing time-window rollups of events. So if you have a list of timestamps, you can analyze it to determine how many occurred within time windows of a specified length.",
   "author": "Avi Flax <avi@aviflax.com>",
   "dependencies": {
     "linestream": "0.2.x",
     "optimist": "0.3.x",
-    "coffee-script": "1.2.0"
+    "coffee-script": "1.2.x"
   },
   "devDependencies": {
   },
