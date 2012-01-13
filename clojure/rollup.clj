@@ -20,7 +20,7 @@ See the file LICENSE in the root of this project for the full license.")
 
 (ns rollup
     (:use [clojure.java.io :only [reader]])
-    (:use [clj-time.core :only [interval days end plus start within?]])
+    (:use [clj-time.core :only [interval minutes hours days weeks end plus start within?]])
     (:use [clj-time.format :only [formatter parse unparse]])
     (:import (org.joda.time Hours Days Weeks DateTime)))
 
@@ -101,7 +101,27 @@ See the file LICENSE in the root of this project for the full license.")
             windows)))
 
 
-(def results (rollup-stream *in* (days 1)))
+(defn parse-window-spec [spec]
+    (let [num (Integer/parseInt (str (first spec)))
+          unit (second spec)]
+        (condp = (str unit)
+            "m" (minutes num)
+            "h" (hours num)
+            "d" (days num)
+            "w" (weeks num)
+            (throw (IllegalArgumentException. (str unit " is not a valid window spec unit.")))
+            )))
+
+
+; BEGIN SCRIPT BODY
+
+(def period
+    (if
+        (and (= (count *command-line-args*) 2) (= (first *command-line-args*) "-w"))
+        (parse-window-spec (second *command-line-args*))
+        (days 1)))
+
+(def results (rollup-stream *in* period))
 
 (println (rollup-to-csv (:windows results) "\t"))
 
