@@ -22,16 +22,21 @@ See the file LICENSE in the root of this project for the full license.")
     (:use [clojure.java.io :only [reader]])
     (:use [clj-time.core :only [interval days end plus start within?]])
     (:use [clj-time.format :only [formatter parse unparse]])
-    (:import (org.joda.time Hours Days Weeks)))
+    (:import (org.joda.time Hours Days Weeks DateTime)))
+
+
+(defrecord Results [windows errors])
 
 
 (defrecord Window [interval count])
 
 
 (defn extract-date [line]
-    (let [date-formatter (formatter "dd/MMM/yyyy:HH:mm:ss Z")]
-        (parse date-formatter
-            (second (re-find #"\[([^\]]+)\]" line)))))
+    (let [date-formatter (formatter "dd/MMM/yyyy:HH:mm:ss Z")
+          regex-result (second (re-find #"\[([^\]]+)\]" line))]
+        (try 
+            (parse date-formatter regex-result)
+            (catch Exception e (str "No date found in " line)))))
 
 
 (defn increment-window [window]
@@ -54,15 +59,25 @@ See the file LICENSE in the root of this project for the full license.")
             (Window. (interval start end) 1)))
 
 
-(defn rollup-reduce [period windows date-time]
-    (if
-        (and (seq windows) (within? (:interval (last windows)) date-time))
-        (assoc windows (dec (count windows)) (increment-window (last windows)))
-        (assoc windows (count windows) (make-window date-time period))))
+(defn rollup-reduce [period results date-time]
+    (let [windows (:windows results)
+          errors  (:errors  results)]
+        (if
+            (instance? DateTime date-time)
+            (Results.
+                (if
+                    (and (seq windows) (within? (:interval (last windows)) date-time))
+                    (assoc windows (dec (count windows)) (increment-window (last windows)))
+                    (assoc windows (count windows) (make-window date-time period)))
+                (:errors results))
+            (Results.
+                windows
+                (assoc errors (count errors) (str date-time))))))
+            
 
 
 (defn rollup-dates [dates period]
-    (reduce (partial rollup-reduce period) [] dates))
+    (reduce (partial rollup-reduce period) (Results. [] []) dates))
 
 
 (defn rollup-stream [stream period]
@@ -86,4 +101,9 @@ See the file LICENSE in the root of this project for the full license.")
             windows)))
 
 
-(println (rollup-to-csv (rollup-stream *in* (days 1)) "\t"))
+(def results (rollup-stream *in* (days 1)))
+
+(println (rollup-to-csv (:windows results) "\t"))
+
+(binding [*out* *err*]
+    (println (apply str (interpose "\n" (:errors results)))))
