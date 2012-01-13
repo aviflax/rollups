@@ -102,15 +102,17 @@ See the file LICENSE in the root of this project for the full license.")
 
 
 (defn parse-window-spec [spec]
-    (let [num (Integer/parseInt (str (first spec)))
-          unit (second spec)]
-        (condp = (str unit)
-            "m" (minutes num)
-            "h" (hours num)
-            "d" (days num)
-            "w" (weeks num)
-            (throw (IllegalArgumentException. (str unit " is not a valid window spec unit.")))
-            )))
+    (let [matches (re-find #"^(\d+)([mhdw])$" spec)]
+        (if
+            (= (count matches) 3)
+            (let [num (Integer/parseInt (str (second matches)))
+                  unit (nth matches 2)]
+                (condp = (str unit)
+                    "m" (minutes num)
+                    "h" (hours num)
+                    "d" (days num)
+                    "w" (weeks num)))
+            (throw (IllegalArgumentException. (str spec " is not a valid window spec unit."))))))
 
 
 ; BEGIN SCRIPT BODY
@@ -118,7 +120,11 @@ See the file LICENSE in the root of this project for the full license.")
 (def period
     (if
         (and (= (count *command-line-args*) 2) (= (first *command-line-args*) "-w"))
-        (parse-window-spec (second *command-line-args*))
+        (try
+            (parse-window-spec (second *command-line-args*))
+            (catch IllegalArgumentException e
+                (println (.getMessage e))
+                (System/exit 1)))
         (days 1)))
 
 (def results (rollup-stream *in* period))
