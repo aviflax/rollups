@@ -27,7 +27,6 @@ See the file LICENSE in the root of this project for the full license.")
 
 (defrecord Results [windows errors])
 
-
 (defrecord Window [interval count])
 
 
@@ -115,21 +114,27 @@ See the file LICENSE in the root of this project for the full license.")
             (throw (IllegalArgumentException. (str spec " is not a valid window spec unit."))))))
 
 
-; BEGIN SCRIPT BODY
+(defn println-err [string]
+     (binding [*out* *err*]
+        (println (str string))))
 
-(def period
+
+(defn println-err-exit [string]
+    (println-err string)
+    (System/exit 1))
+
+
+(defn parse-period [args]
     (if
         (and (= (count *command-line-args*) 2) (= (first *command-line-args*) "-w"))
         (try
             (parse-window-spec (second *command-line-args*))
             (catch IllegalArgumentException e
-                (println (.getMessage e))
-                (System/exit 1)))
-        (days 1)))
+                (println-err-exit (.getMessage e))))
+        (println-err-exit "the argument -w [spec] is required")))
 
-(def results (rollup-stream *in* period))
 
-(println (rollup-to-csv (:windows results) "\t"))
-
-(binding [*out* *err*]
-    (println (apply str (interpose "\n" (:errors results)))))
+(if *command-line-args*
+    (let [results (rollup-stream *in* (parse-period *command-line-args*))]
+        (println (rollup-to-csv (:windows results) "\t"))
+        (println-err (apply str (interpose "\n" (:errors results))))))
