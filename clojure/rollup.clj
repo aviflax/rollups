@@ -67,12 +67,11 @@ See the file LICENSE in the root of this project for the full license.")
                 (if
                     (and (seq windows) (within? (:interval (last windows)) date-time))
                     (assoc windows (dec (count windows)) (increment-window (last windows)))
-                    (assoc windows (count windows) (make-window date-time period)))
+                    (conj windows (make-window date-time period)))
                 (:errors results))
             (Results.
                 windows
-                (assoc errors (count errors) (str date-time))))))
-            
+                (conj errors (str date-time))))))
 
 
 (defn rollup-dates [dates period]
