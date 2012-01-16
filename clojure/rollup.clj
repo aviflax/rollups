@@ -20,9 +20,9 @@ See the file LICENSE in the root of this project for the full license.")
 
 (ns rollup
     (:use [clojure.java.io :only [reader]])
-    (:use [clj-time.core :only [interval minutes hours days weeks end plus start within?]])
+    (:use [clj-time.core :only [interval minutes hours days weeks end plus start within? default-time-zone]])
     (:use [clj-time.format :only [formatter parse unparse]])
-    (:import (org.joda.time Hours Days Weeks DateTime)))
+    (:import (org.joda.time DateTime Minutes Hours Days Weeks DateTimeZone)))
 
 
 (defrecord Results [windows errors])
@@ -31,7 +31,7 @@ See the file LICENSE in the root of this project for the full license.")
 
 
 (defn extract-date [line]
-    (let [date-formatter (formatter "dd/MMM/yyyy:HH:mm:ss Z")
+    (let [date-formatter (formatter "dd/MMM/yyyy:HH:mm:ss Z" (DateTimeZone/getDefault))
           regex-result (second (re-find #"\[([^\]]+)\]" line))]
         (try 
             (parse date-formatter regex-result)
@@ -45,17 +45,17 @@ See the file LICENSE in the root of this project for the full license.")
 (defn date-to-window-start [date-time period]
     (let [base (-> date-time (.withMillisOfSecond 0) (.withSecondOfMinute 0))]
         (condp instance? period
+            Minutes base
             Hours (.withMinuteOfHour base 0)
             Days (-> base (.withMinuteOfHour 0) (.withHourOfDay 0))
             Weeks (-> base (.withMinuteOfHour 0) (.withHourOfDay 0) (.withDayOfWeek 0))
-            base
-            )))
+            (throw (IllegalArgumentException. (str period " is not a support period type"))))))
 
 
 (defn make-window [date-time period]
     (let [start (date-to-window-start date-time period)
           end   (plus start period)]
-            (Window. (interval start end) 1)))
+        (Window. (interval start end) 1)))
 
 
 (defn rollup-reduce [period results date-time]
@@ -106,10 +106,10 @@ See the file LICENSE in the root of this project for the full license.")
             (let [num (Integer/parseInt (str (second matches)))
                   unit (nth matches 2)]
                 (condp = (str unit)
-                    "m" (minutes num)
-                    "h" (hours num)
-                    "d" (days num)
-                    "w" (weeks num)))
+                    "m" (Minutes/minutes num)
+                    "h" (Hours/hours num)
+                    "d" (Days/days num)
+                    "w" (Weeks/weeks num)))
             (throw (IllegalArgumentException. (str spec " is not a valid window spec unit."))))))
 
 
@@ -123,7 +123,7 @@ See the file LICENSE in the root of this project for the full license.")
     (System/exit 1))
 
 
-(defn parse-period [args]
+(defn args-to-period [args]
     (if
         (and (= (count *command-line-args*) 2) (= (first *command-line-args*) "-w"))
         (try
@@ -134,6 +134,6 @@ See the file LICENSE in the root of this project for the full license.")
 
 
 (if *command-line-args*
-    (let [results (rollup-stream *in* (parse-period *command-line-args*))]
+    (let [results (rollup-stream *in* (args-to-period *command-line-args*))]
         (println (rollup-to-csv (:windows results) "\t"))
         (println-err (apply str (interpose "\n" (:errors results))))))
