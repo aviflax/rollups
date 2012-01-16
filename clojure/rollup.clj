@@ -58,6 +58,10 @@ See the file LICENSE in the root of this project for the full license.")
         (Window. (interval start end) 1)))
 
 
+(defn replace-last [coll value]
+    (assoc coll (dec (count coll)) value))
+
+
 (defn rollup-reduce [period results date-time]
     (let [windows (:windows results)
           errors  (:errors  results)]
@@ -66,7 +70,7 @@ See the file LICENSE in the root of this project for the full license.")
             (Results.
                 (if
                     (and (seq windows) (within? (:interval (last windows)) date-time))
-                    (assoc windows (dec (count windows)) (increment-window (last windows)))
+                    (replace-last windows (increment-window (last windows)))
                     (conj windows (make-window date-time period)))
                 (:errors results))
             (Results.
@@ -103,8 +107,8 @@ See the file LICENSE in the root of this project for the full license.")
     (let [matches (re-find #"^(\d+)([mhdw])$" spec)]
         (if
             (= (count matches) 3)
-            (let [num (Integer/parseInt (str (second matches)))
-                  unit (nth matches 2)]
+            (let [num (Integer/parseInt (str (matches 1)))
+                  unit (matches 2)]
                 (condp = (str unit)
                     "m" (Minutes/minutes num)
                     "h" (Hours/hours num)
