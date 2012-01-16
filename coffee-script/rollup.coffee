@@ -18,36 +18,6 @@ included in all copies or substantial portions of the Software.
 See the file LICENSE in the root of this project for the full license.
 ###
 
-###
-rollup.coffee — given a line-delimited list of dates from Apache httpd access logs, count how many requests occurred in a given time window.
-
-Each line looks like this:
-168.75.67.132 - - [23/Nov/2011:17:29:24 -0500] "POST /fnic-1/pxcentral/notifications/policy.updated HTTP/1.1" 200 69 "-" "ShortBus/1.1 (Noelios-Restlet-Engine/1.1.5;Java 1.6.0_20;Windows 2003 5.2)"
-    
-## BUGS
-
-
-## DEFINITE TO DOS:
-* Support other event timestamp formats
-* Support other output formats (starting with JSON)
-* Support cmd-line arg for csv separator
-* Refactor to be usable as a general-purpose library, either in Node or in a browser
-
-
-## POSSIBLE TO DOS:
-* Decide whether data must be passed in sorted or not (would allow for some optimizations)
-* Add behaviour tests!!
-* Support parallellization (off by default)
-* Add an option to specify whether weeks should start on Sunday or Monday
-* Support rollup windows of N months
-* Support the input already being a rollup, of which we'd do a bigger rollup
-** so you might store a per-minute rollup in a file, and generate a per-hour rollup from that
-** kinda like re-reduce
-** This'd work really well with a companion tool, something which would support incremental processing
-   by keeping track of where you were in a file or stream, and grabbing only that
-
-###
-
 
 LineStream = require 'linestream'
 optimist = require 'optimist'

@@ -53,6 +53,7 @@ So here's some notes on the status of each one:
 ### Clojure
 * Second-fastest so far — about 3.3 seconds with my simple test
 * Window spec is currently hard-coded to 1 day
+* Should already be usable as a library
 
 
 ### Scala
@@ -62,3 +63,25 @@ So here's some notes on the status of each one:
 
 ### Python
 * Not yet functional. Not sure I’ll finish this one as writing functional Python seems like it might be kinda annoying.
+
+
+## To Dos
+
+### Definite
+* Support other event timestamp formats
+* Support other output formats (starting with JSON)
+* Support cmd-line arg for csv separator
+* Refactor to be usable as a general-purpose library
+  * CoffeeScript: either in Node or in a browser
+
+
+### Possible
+* Decide whether data must be passed in sorted or not (would allow for some optimizations)
+* Add behaviour tests!!
+* Support parallellization (off by default)
+* Add an option to specify whether weeks should start on Sunday or Monday
+* Support rollup windows of N months
+* Support the input already being a rollup, of which we'd do a bigger rollup
+  * so you might store a per-minute rollup in a file, and generate a per-hour rollup from that
+  * kinda like re-reduce
+  * This'd work really well with a companion tool, something which would support incremental processing by keeping track of where you were in a file or stream, and grabbing only the new part of the data, then updating the pointer
