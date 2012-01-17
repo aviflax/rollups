@@ -22,7 +22,7 @@ See the file LICENSE in the root of this project for the full license.")
     (:use [clojure.java.io :only [reader]])
     (:use [clj-time.core :only [interval minutes hours days weeks end plus start within? default-time-zone]])
     (:use [clj-time.format :only [formatter parse unparse]])
-    (:import (org.joda.time DateTime Minutes Hours Days Weeks DateTimeZone)))
+    (:import (org.joda.time DateTime Minutes Hours Days Weeks)))
 
 
 (defrecord Results [windows errors])
@@ -31,7 +31,7 @@ See the file LICENSE in the root of this project for the full license.")
 
 
 (defn extract-date [line]
-    (let [date-formatter (formatter "dd/MMM/yyyy:HH:mm:ss Z" (DateTimeZone/getDefault))
+    (let [date-formatter (formatter "dd/MMM/yyyy:HH:mm:ss Z" (default-time-zone))
           regex-result (second (re-find #"\[([^\]]+)\]" line))]
         (try 
             (parse date-formatter regex-result)
