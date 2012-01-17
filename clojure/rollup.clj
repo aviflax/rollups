@@ -38,8 +38,8 @@ See the file LICENSE in the root of this project for the full license.")
             (catch Exception e (str "No date found in " line)))))
 
 
-(defn increment-window [window]
-    (Window. (:interval window) (inc (:count window))))
+(defn increment-window [{:keys [interval count]}]
+    (Window. interval (inc count)))
 
 
 (defn date-to-window-start [date-time period]
@@ -63,8 +63,7 @@ See the file LICENSE in the root of this project for the full license.")
 
 
 (defn rollup-reduce [period results date-time]
-    (let [windows (:windows results)
-          errors  (:errors  results)]
+    (let [{:keys [windows errors]} results]
         (if
             (instance? DateTime date-time)
             (Results.
@@ -83,8 +82,7 @@ See the file LICENSE in the root of this project for the full license.")
 
 
 (defn rollup-stream [stream period]
-    (let [lines (line-seq (reader stream))]
-        (rollup-dates (map extract-date lines) period)))
+    (rollup-dates (map extract-date (line-seq (reader stream))) period))
 
 
 (defn rollup-to-csv [windows separator]
