@@ -85,20 +85,22 @@ See the file LICENSE in the root of this project for the full license.")
     (rollup-dates (map extract-date (line-seq (reader stream))) period))
 
 
-(defn rollup-to-csv [windows separator]
-    ; TODO: make separator optional, with the default value "\t"
-    (let [date-formatter (formatter "yyyy-MM-dd HH:mm")]
-        (reduce
-            #(str
-                %
-                (unparse date-formatter (start (:interval %2)))
-                separator
-                (unparse date-formatter (end (:interval %2)))
-                separator
-                (:count %2)
-                "\n")
-            (str "Start" separator "End"  separator  "Count" "\n")
-            windows)))
+(defn rollup-to-csv 
+    ([windows]
+        (rollup-to-csv windows "\t"))
+    ([windows separator]
+        (let [date-formatter (formatter "yyyy-MM-dd HH:mm")]
+            (reduce
+                #(str
+                    %
+                    (unparse date-formatter (start (:interval %2)))
+                    separator
+                    (unparse date-formatter (end (:interval %2)))
+                    separator
+                    (:count %2)
+                    "\n")
+                (str "Start" separator "End"  separator  "Count" "\n")
+                windows))))
 
 
 (defn parse-window-spec [spec]
@@ -137,5 +139,5 @@ See the file LICENSE in the root of this project for the full license.")
 
 (if *command-line-args*
     (let [results (rollup-stream *in* (args-to-period *command-line-args*))]
-        (println (rollup-to-csv (:windows results) "\t"))
+        (println (rollup-to-csv (:windows results)))
         (println-err (apply str (interpose "\n" (:errors results))))))
