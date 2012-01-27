@@ -3,3 +3,7 @@ pom.xml
 rollups-*.jar
 sample.log
 .lein-deps-sum
+clojure-contrib.jar
+clojure-contrib
+clojure.jar
+clojure

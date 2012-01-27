@@ -1,7 +1,6 @@
 #!/usr/bin/env java -cp lib/* clojure.main
 
-(comment "
-Copyright © Avi Flax and other contributors
+(comment "Copyright © Avi Flax and other contributors
 
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
@@ -20,9 +19,11 @@ See the file LICENSE in the root of this project for the full license.")
 
 (ns rollup
     (:use [clojure.java.io :only [reader]])
+	(:use [clojure.string :only [split-lines]])
     (:use [clj-time.core :only [interval minutes hours days weeks end plus start within? default-time-zone]])
     (:use [clj-time.format :only [formatter parse unparse]])
-    (:import (org.joda.time DateTime Minutes Hours Days Weeks)))
+    (:import (org.joda.time DateTime Minutes Hours Days Weeks))
+	(:gen-class))
 
 
 (defrecord Results [windows errors])
@@ -48,7 +49,7 @@ See the file LICENSE in the root of this project for the full license.")
             Minutes base
             Hours (.withMinuteOfHour base 0)
             Days (-> base (.withMinuteOfHour 0) (.withHourOfDay 0))
-            Weeks (-> base (.withMinuteOfHour 0) (.withHourOfDay 0) (.withDayOfWeek 0))
+            Weeks (-> base (.withMinuteOfHour 0) (.withHourOfDay 0) (.withDayOfWeek 1))
             (throw (IllegalArgumentException. (str period " is not a support period type"))))))
 
 
@@ -81,8 +82,22 @@ See the file LICENSE in the root of this project for the full license.")
     (reduce (partial rollup-reduce period) (Results. [] []) dates))
 
 
-(defn rollup-stream [stream period]
-    (rollup-dates (map extract-date (line-seq (reader stream))) period))
+(defn rollup-lines [lines period]
+	(rollup-dates (map extract-date lines) period))
+
+
+(defn rollup-string [string period]
+	(rollup-lines (split-lines string) period))
+
+
+(defn rollup-source
+	"Given a source of data containing one event timestamp on each line,
+    calculates the number of events within each time window of the specified
+    length. source is passed to reader, so it can be a stream, a file,
+    a local file path, or a URI"
+	[source period]
+	(let [lines (line-seq (reader source))]
+    	(rollup-lines lines period)))
 
 
 (defn rollup-to-csv 
@@ -129,15 +144,22 @@ See the file LICENSE in the root of this project for the full license.")
 
 (defn args-to-period [args]
     (if
-        (and (= (count *command-line-args*) 2) (= (first *command-line-args*) "-w"))
+        (and
+			(= (count args) 2)
+			(= (first args) "-w"))
         (try
-            (parse-window-spec (second *command-line-args*))
+            (parse-window-spec (second args))
             (catch IllegalArgumentException e
                 (println-err-exit (.getMessage e))))
         (println-err-exit "the argument -w [spec] is required")))
 
 
-(if *command-line-args*
-    (let [results (rollup-stream *in* (args-to-period *command-line-args*))]
+;; Not sure what this should be called so it’s called when this file is
+;; run as a script but not when it’s used as a library
+(defn -main [args]
+    (let [results (rollup-source *in* (args-to-period args))]
         (println (rollup-to-csv (:windows results)))
         (println-err (apply str (interpose "\n" (:errors results))))))
+
+
+(-main *command-line-args*)
