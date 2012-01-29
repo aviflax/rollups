@@ -22,8 +22,7 @@ See the file LICENSE in the root of this project for the full license.")
 	(:use [clojure.string :only [split-lines]])
     (:use [clj-time.core :only [interval minutes hours days weeks end plus start within? default-time-zone]])
     (:use [clj-time.format :only [formatter parse unparse]])
-    (:import (org.joda.time DateTime Minutes Hours Days Weeks))
-	(:gen-class))
+    (:import (org.joda.time DateTime Minutes Hours Days Weeks)))
 
 
 (defrecord Results [windows errors])
@@ -156,12 +155,31 @@ See the file LICENSE in the root of this project for the full license.")
 
 
 ;; Not sure what this should be called so it’s called when this file is
-;; run as a script but not when it’s used as a library
+;; run as a script but not when it’s used as a library; I’ve seen conflicting
+;; documentation.
 (defn -main [args]
-    (let [results (rollup-source *in* (args-to-period args))]
     (let [results (rollup-reader (reader *in*) (args-to-period args))]
         (println (rollup-to-csv (:windows results)))
         (println-err (apply str (interpose "\n" (:errors results))))))
 
 
-(-main *command-line-args*)
+(defn running-as-script
+	"This is hacky and brittle but it seems to work. I’d love a better
+	way to do this; see http://stackoverflow.com/q/9027265"
+	[]
+	(let
+		[known-namespaces
+			#{"clojure.set"
+			    "user"
+				"clojure.main" 
+				"clj-time.format" 
+				"clojure.core" 
+				"rollup" 
+				"clj-time.core" 
+				"clojure.java.io" 
+				"clojure.string" 
+				"clojure.core.protocols"}]
+		(= (count (all-ns)) (count known-namespaces))))
+
+
+(when (running-as-script) (-main *command-line-args*))
