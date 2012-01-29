@@ -58,7 +58,7 @@ See the file LICENSE in the root of this project for the full license.")
         (Window. (interval start end) 1)))
 
 
-(defn replace-last [coll value]
+(defn ^:private replace-last [coll value]
     (assoc coll (dec (count coll)) value))
 
 
@@ -68,6 +68,9 @@ See the file LICENSE in the root of this project for the full license.")
             (instance? DateTime date-time)
             (Results.
                 (if
+					;; TODO: because this only checks the last window, this requires the input
+					;; to be pre-sorted. Might want to consider an approach which would support
+					;; non-sorted input
                     (and (seq windows) (within? (:interval (last windows)) date-time))
                     (replace-last windows (increment-window (last windows)))
                     (conj windows (make-window date-time period)))
@@ -93,8 +96,7 @@ See the file LICENSE in the root of this project for the full license.")
 
 (defn rollup-reader
 	"Given a reader containing one event timestamp on each line,
-    calculates the number of events within each time window of the specified
-    length."
+    calculates the number of events within each time window of the specified length."
 	[reader period]
 	(let [lines (line-seq reader)]
     	(rollup-lines lines period)))
@@ -118,7 +120,7 @@ See the file LICENSE in the root of this project for the full license.")
                 windows))))
 
 
-(defn parse-window-spec [spec]
+(defn ^:private parse-window-spec [spec]
     (let [matches (re-find #"^(\d+)([mhdw])$" spec)]
         (if
             (= (count matches) 3)
@@ -132,17 +134,17 @@ See the file LICENSE in the root of this project for the full license.")
             (throw (IllegalArgumentException. (str spec " is not a valid window spec unit."))))))
 
 
-(defn println-err [string]
+(defn ^:private println-err [string]
      (binding [*out* *err*]
         (println (str string))))
 
 
-(defn println-err-exit [string]
+(defn ^:private println-err-exit [string]
     (println-err string)
     (System/exit 1))
 
 
-(defn args-to-period [args]
+(defn ^:private args-to-period [args]
     (if
         (and
 			(= (count args) 2)
@@ -163,7 +165,7 @@ See the file LICENSE in the root of this project for the full license.")
         (println-err (apply str (interpose "\n" (:errors results))))))
 
 
-(defn running-as-script
+(defn ^:private running-as-script
 	"This is hacky and brittle but it seems to work. I’d love a better
 	way to do this; see http://stackoverflow.com/q/9027265"
 	[]
