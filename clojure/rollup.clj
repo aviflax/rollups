@@ -86,17 +86,18 @@ See the file LICENSE in the root of this project for the full license.")
 	(rollup-dates (map extract-date lines) period))
 
 
-(defn rollup-string [string period]
+(defn rollup-string
+	"Rolls up a string containing one event timestamp per line"
+	[string period]
 	(rollup-lines (split-lines string) period))
 
 
-(defn rollup-source
-	"Given a source of data containing one event timestamp on each line,
+(defn rollup-reader
+	"Given a reader containing one event timestamp on each line,
     calculates the number of events within each time window of the specified
-    length. source is passed to reader, so it can be a stream, a file,
-    a local file path, or a URI"
-	[source period]
-	(let [lines (line-seq (reader source))]
+    length."
+	[reader period]
+	(let [lines (line-seq reader)]
     	(rollup-lines lines period)))
 
 
@@ -158,6 +159,7 @@ See the file LICENSE in the root of this project for the full license.")
 ;; run as a script but not when it’s used as a library
 (defn -main [args]
     (let [results (rollup-source *in* (args-to-period args))]
+    (let [results (rollup-reader (reader *in*) (args-to-period args))]
         (println (rollup-to-csv (:windows results)))
         (println-err (apply str (interpose "\n" (:errors results))))))
 
