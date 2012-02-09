@@ -25,10 +25,6 @@ See the file LICENSE in the root of this project for the full license.")
     (:import (org.joda.time DateTime Minutes Hours Days Weeks)))
 
 
-(defrecord Results [windows errors])
-
-(defrecord Window [interval count])
-
 
 (defn extract-date [line]
     (let [date-formatter (formatter "dd/MMM/yyyy:HH:mm:ss Z" (default-time-zone))
@@ -39,7 +35,8 @@ See the file LICENSE in the root of this project for the full license.")
 
 
 (defn increment-window [{:keys [interval count]}]
-    (Window. interval (inc count)))
+    {:interval interval
+     :count (inc count)})
 
 
 (defn date-to-window-start [date-time period]
@@ -55,7 +52,8 @@ See the file LICENSE in the root of this project for the full license.")
 (defn make-window [date-time period]
     (let [start (date-to-window-start date-time period)
           end   (plus start period)]
-        (Window. (interval start end) 1)))
+        {:interval (interval start end)
+         :count 1}))
 
 
 (defn ^:private replace-last [coll value]
@@ -64,24 +62,23 @@ See the file LICENSE in the root of this project for the full license.")
 
 (defn rollup-reduce [period results date-time]
     (let [{:keys [windows errors]} results]
-        (if
-            (instance? DateTime date-time)
-            (Results.
-                (if
+        (if (instance? DateTime date-time)
+            {:windows
+				(if
 					;; TODO: because this only checks the last window, this requires the input
 					;; to be pre-sorted. Might want to consider an approach which would support
 					;; non-sorted input
                     (and (seq windows) (within? (:interval (last windows)) date-time))
                     (replace-last windows (increment-window (last windows)))
                     (conj windows (make-window date-time period)))
-                (:errors results))
-            (Results.
-                windows
-                (conj errors (str date-time))))))
+			 :errors errors}
+
+            {:windows windows
+             :errors (conj errors (str date-time))})))
 
 
 (defn rollup-dates [dates period]
-    (reduce (partial rollup-reduce period) (Results. [] []) dates))
+    (reduce (partial rollup-reduce period) {:windows [] :errors []} dates))
 
 
 (defn rollup-lines [lines period]
@@ -122,8 +119,7 @@ See the file LICENSE in the root of this project for the full license.")
 
 (defn ^:private parse-window-spec [spec]
     (let [matches (re-find #"^(\d+)([mhdw])$" spec)]
-        (if
-            (= (count matches) 3)
+        (if (= (count matches) 3)
             (let [num (Integer/parseInt (str (matches 1)))
                   unit (matches 2)]
                 (condp = (str unit)
@@ -135,8 +131,8 @@ See the file LICENSE in the root of this project for the full license.")
 
 
 (defn ^:private println-err [string]
-     (binding [*out* *err*]
-        (println (str string))))
+	(binding [*out* *err*]
+		(println (str string))))
 
 
 (defn ^:private println-err-exit [string]
