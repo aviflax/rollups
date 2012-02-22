@@ -138,28 +138,25 @@ incrementWindow = (window) ->
     end: window.end
     count: window.count + 1
 
-# Finds index of the first element satisfiying the predicate, searching the array from right (end) to left (beginning)
-Array.prototype.indexWhereRight = (predicate) ->
-    i = this.length - 1
-
-    until i < 0 or predicate(this[i])
-        i--
-
-    i
 
 
-# Return a copy of an array with an element at a specified index replaced with a new value
-Array.prototype.updated = (index, value) -> this.slice(0, index).concat(value, this.slice(index + 1))
+Array.prototype.updated = (index, value) ->
+	# Return a copy of an array with an element at a specified index replaced with a new value
+	this.slice(0, index).concat(value, this.slice(index + 1))
+
+
+Array.prototype.replaceLast = (value) ->
+    this.updated this.length - 1, value
 
 
 rollup = (windows, date, windowSpec='1d') ->
     return windows if not date
-    
-    # if we decide that the data will always be sorted, we can make this faster by just checking the last item in the array
-    matchingWindowIndex = windows.indexWhereRight (window) -> window.start <= date < window.end
-    
-    if matchingWindowIndex >= 0
-        windows.updated matchingWindowIndex, incrementWindow(windows[matchingWindowIndex])
+
+    # we only check the last window for a match, so the data must be pre-sorted
+    lastWindow = windows[windows.length - 1]
+
+    if lastWindow and lastWindow.start <= date < lastWindow.end
+        windows.replaceLast incrementWindow(lastWindow)
     else
         windows.concat makeWindow date, windowSpec, 1
 
@@ -192,7 +189,9 @@ formatDateTimeForCsv = (date) ->
 
 
 
-### SCRIPT BODY ###
+
+
+###### SCRIPT BODY ######
 
 optimist.options 'w',
     alias: 'window',
@@ -208,7 +207,8 @@ linestream = new LineStream process.stdin
     way to do that in Node ###
 windows = []
 
-linestream.on 'data', (line) -> windows = rollup windows, extractDate(line), argv.w
+linestream.on 'data', (line) ->
+    windows = rollup windows, extractDate(line), argv.w
 
 linestream.on 'end', () -> process.stdout.write toCsv windows
 
