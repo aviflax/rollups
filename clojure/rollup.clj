@@ -1,4 +1,4 @@
-#!/usr/bin/env java -cp lib/* clojure.main
+#!/usr/bin/env java -server -cp lib/* clojure.main
 
 (comment "Copyright © Avi Flax and other contributors
 
@@ -24,8 +24,6 @@ See the file LICENSE in the root of this project for the full license.")
     (:use [clj-time.format :only [formatter parse unparse]])
     (:import (org.joda.time DateTime Minutes Hours Days Weeks)))
 
-
-
 (defn extract-date [line]
     (let [date-formatter (formatter "dd/MMM/yyyy:HH:mm:ss Z" (default-time-zone))
           regex-result (second (re-find #"\[([^\]]+)\]" line))]
@@ -39,7 +37,7 @@ See the file LICENSE in the root of this project for the full license.")
      :count (inc count)})
 
 
-(defn date-to-window-start [date-time period]
+(defn date-to-window-start [^DateTime date-time period]
     (let [base (-> date-time (.withMillisOfSecond 0) (.withSecondOfMinute 0))]
         (condp instance? period
             Minutes base
@@ -61,20 +59,15 @@ See the file LICENSE in the root of this project for the full license.")
 
 
 (defn rollup-reduce [period results date-time]
-    (let [{:keys [windows errors]} results]
-        (if (instance? DateTime date-time)
-            {:windows
-				(if
-					;; TODO: because this only checks the last window, this requires the input
-					;; to be pre-sorted. Might want to consider an approach which would support
-					;; non-sorted input
-                    (and (seq windows) (within? (:interval (last windows)) date-time))
-                    (replace-last windows (increment-window (last windows)))
-                    (conj windows (make-window date-time period)))
-			 :errors errors}
-
-            {:windows windows
-             :errors (conj errors (str date-time))})))
+  (if (instance? DateTime date-time)
+    (update-in results [:windows]
+               (fn [windows]
+                 (let [lw (first (rseq windows))]
+                   (if (and (seq windows) (within? (:interval lw) date-time))
+                     (replace-last windows (increment-window lw))
+                     (conj windows (make-window date-time period))))))
+    (update-in results [:errors]
+               #(conj % (str date-time)))))
 
 
 (defn rollup-dates [dates period]
