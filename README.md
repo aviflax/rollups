@@ -44,25 +44,17 @@ The goal is for each variant to be functionally equivalent, but I’m not quite 
 
 So here's some notes on the status of each one:
 
-
 ### CoffeeScript / Node
-* Fast and efficient — about 1 second using a single core with my simple test
-* Supports passing the window spec via the command line — something I haven’t added to the other variants yet
-
+* Fast
 
 ### Clojure
-* Second-fastest so far — about 3.3 seconds with my simple test
+* Fast — possibly the fastest with small windows
 * Window spec is currently hard-coded to 1 day
 * Should already be usable as a library
 
-
 ### Scala
-* Slow — about 130 seconds with my simple test
+* Slow
 * Window spec is currently hard-coded to 1 day
-
-
-### Python
-* Not yet functional. Not sure I’ll finish this one as writing functional Python seems like it might be kinda annoying.
 
 
 ## To Dos
