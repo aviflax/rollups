@@ -1,4 +1,4 @@
-#!/usr/bin/env java -cp lib/* clojure.main
+#!/usr/bin/env java -server -cp lib/* clojure.main
 
 (comment "Copyright © Avi Flax and other contributors
 
@@ -24,11 +24,10 @@ See the file LICENSE in the root of this project for the full license.")
     (:use [clj-time.format :only [formatter parse unparse]])
     (:import (org.joda.time DateTime Minutes Hours Days Weeks)))
 
-
+(def date-formatter (formatter "dd/MMM/yyyy:HH:mm:ss Z" (default-time-zone)))
 
 (defn extract-date [line]
-    (let [date-formatter (formatter "dd/MMM/yyyy:HH:mm:ss Z" (default-time-zone))
-          regex-result (second (re-find #"\[([^\]]+)\]" line))]
+    (let [regex-result (second (re-find #"\[([^\]]+)\]" line))]
         (try 
             (parse date-formatter regex-result)
             (catch Exception e (str "No date found in " line)))))
@@ -39,7 +38,7 @@ See the file LICENSE in the root of this project for the full license.")
      :count (inc count)})
 
 
-(defn date-to-window-start [date-time period]
+(defn date-to-window-start [^DateTime date-time period]
     (let [base (-> date-time (.withMillisOfSecond 0) (.withSecondOfMinute 0))]
         (condp instance? period
             Minutes base
@@ -61,20 +60,15 @@ See the file LICENSE in the root of this project for the full license.")
 
 
 (defn rollup-reduce [period results date-time]
-    (let [{:keys [windows errors]} results]
-        (if (instance? DateTime date-time)
-            {:windows
-				(if
-					;; TODO: because this only checks the last window, this requires the input
-					;; to be pre-sorted. Might want to consider an approach which would support
-					;; non-sorted input
-                    (and (seq windows) (within? (:interval (last windows)) date-time))
-                    (replace-last windows (increment-window (last windows)))
-                    (conj windows (make-window date-time period)))
-			 :errors errors}
-
-            {:windows windows
-             :errors (conj errors (str date-time))})))
+  (if (instance? DateTime date-time)
+    (update-in results [:windows]
+               (fn [windows]
+                 (let [lw (first (rseq windows))]
+                   (if (and (seq windows) (within? (:interval lw) date-time))
+                     (replace-last windows (increment-window lw))
+                     (conj windows (make-window date-time period))))))
+    (update-in results [:errors]
+               #(conj % (str date-time)))))
 
 
 (defn rollup-dates [dates period]
@@ -98,35 +92,28 @@ See the file LICENSE in the root of this project for the full license.")
 	(let [lines (line-seq reader)]
     	(rollup-lines lines period)))
 
+(def unparse-formatter (formatter "yyyy-MM-dd HH:mm"))
 
 (defn rollup-to-csv 
-    ([windows]
-        (rollup-to-csv windows "\t"))
-    ([windows separator]
-        (let [date-formatter (formatter "yyyy-MM-dd HH:mm")]
-            (reduce
-                #(str
-                    %
-                    (unparse date-formatter (start (:interval %2)))
-                    separator
-                    (unparse date-formatter (end (:interval %2)))
-                    separator
-                    (:count %2)
-                    "\n")
-                (str "Start" separator "End"  separator  "Count" "\n")
-                windows))))
-
+  ([windows]
+     (rollup-to-csv windows "\t"))
+  ([windows separator]
+     (println "Start" separator "End"  separator  "Count")
+     (doseq [{:keys [interval count]} windows]
+       (let [start (unparse unparse-formatter (start interval))
+             end (unparse unparse-formatter (end interval))]
+         (println start separator end separator count)))))
 
 (defn ^:private parse-window-spec [spec]
     (let [matches (re-find #"^(\d+)([mhdw])$" spec)]
         (if (= (count matches) 3)
             (let [num (Integer/parseInt (str (matches 1)))
                   unit (matches 2)]
-                (condp = (str unit)
-                    "m" (Minutes/minutes num)
-                    "h" (Hours/hours num)
-                    "d" (Days/days num)
-                    "w" (Weeks/weeks num)))
+                (case (char (first (str unit)))
+                    \m (Minutes/minutes num)
+                    \h (Hours/hours num)
+                    \d (Days/days num)
+                    \w (Weeks/weeks num)))
             (throw (IllegalArgumentException. (str spec " is not a valid window spec unit."))))))
 
 
@@ -155,9 +142,9 @@ See the file LICENSE in the root of this project for the full license.")
 ;; Not sure what this should be called so it’s called when this file is
 ;; run as a script but not when it’s used as a library; I’ve seen conflicting documentation.
 (defn -main [args]
-    (let [results (rollup-reader (reader *in*) (args-to-period args))]
-        (println (rollup-to-csv (:windows results)))
-        (println-err (apply str (interpose "\n" (:errors results))))))
+  (let [results (rollup-reader (reader *in*) (args-to-period args))]
+    (rollup-to-csv (:windows results))
+    (println-err (apply str (interpose "\n" (:errors results))))))
 
 
 (defn ^:private running-as-script
