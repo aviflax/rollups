@@ -46,7 +46,7 @@ See the file LICENSE in the root of this project for the full license.")
             Hours (.withMinuteOfHour base 0)
             Days (-> base (.withMinuteOfHour 0) (.withHourOfDay 0))
             Weeks (-> base (.withMinuteOfHour 0) (.withHourOfDay 0) (.withDayOfWeek 1))
-            (throw (IllegalArgumentException. (str period " is not a support period type"))))))
+            (throw (IllegalArgumentException. (str period " is not a supported period type"))))))
 
 
 (defn make-window [date-time period]
@@ -153,8 +153,7 @@ See the file LICENSE in the root of this project for the full license.")
 
 
 ;; Not sure what this should be called so it’s called when this file is
-;; run as a script but not when it’s used as a library; I’ve seen conflicting
-;; documentation.
+;; run as a script but not when it’s used as a library; I’ve seen conflicting documentation.
 (defn -main [args]
     (let [results (rollup-reader (reader *in*) (args-to-period args))]
         (println (rollup-to-csv (:windows results)))
