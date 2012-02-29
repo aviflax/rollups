@@ -44,13 +44,13 @@ The goal is for each variant to be functionally equivalent, but I’m not quite 
 
 So here's some notes on the status of each one:
 
-### CoffeeScript / Node
-* Fast
-
 ### Clojure
 * Fast — possibly the fastest with small windows
-* Window spec is currently hard-coded to 1 day
 * Should already be usable as a library
+
+### CoffeeScript / Node
+* Fast
+* Probably not safe to use as a library yet
 
 ### Scala
 * Slow
