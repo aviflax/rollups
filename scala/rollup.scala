@@ -1,6 +1,3 @@
-#!/usr/bin/env scala -cp lib/* -deprecation
-!#
-
 /*
 Copyright © Avi Flax and other contributors
 
